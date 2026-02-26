@@ -79,5 +79,6 @@ export const TOPICS: Topic[] = [
     tags: ["patrística", "Minúcio Félix", "Otávio"],
     updatedAt: "2026-02-26",
     telegraphPath: "Otávio-de-Minúcio-Félix-02-26",
+    blocks: []
   }
 ];
