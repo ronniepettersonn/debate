@@ -6,22 +6,22 @@ export type TopicCategory =
 
 export type TopicBlock =
   | {
-      type: "tese";
-      title: string;
-      content: string;
-    }
+    type: "tese";
+    title: string;
+    content: string;
+  }
   | {
-      type: "citacao";
-      title: string;
-      quote: string;
-      reference: string;
-      url?: string;
-    }
+    type: "citacao";
+    title: string;
+    quote: string;
+    reference: string;
+    url?: string;
+  }
   | {
-      type: "lista";
-      title: string;
-      items: string[];
-    };
+    type: "lista";
+    title: string;
+    items: string[];
+  };
 
 export type Topic = {
   id: string;
@@ -32,6 +32,7 @@ export type Topic = {
   tags: string[];
   updatedAt: string;
   blocks: TopicBlock[];
+  telegraphPath?: string;
 };
 
 export const TOPICS: Topic[] = [
@@ -68,5 +69,15 @@ export const TOPICS: Topic[] = [
         ]
       }
     ]
+  },
+  {
+    id: "t_otavio",
+    slug: "otavio-minucio-felix",
+    title: "Otávio de Minúcio Félix",
+    category: "Notas Históricas",
+    summary: "Texto via Telegraph para teste de renderização e formatação.",
+    tags: ["patrística", "Minúcio Félix", "Otávio"],
+    updatedAt: "2026-02-26",
+    telegraphPath: "Otávio-de-Minúcio-Félix-02-26",
   }
 ];
