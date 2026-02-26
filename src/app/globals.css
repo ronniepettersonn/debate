@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Tokens de tema (ajuste depois para bater 100% com o hotsite) */
+@theme {
+  --color-bg: #0b0b0b;
+  --color-panel: #111111;
+  --color-text: #f5f1e8;
+  --color-muted: #cbbf9b;
+  --color-gold: #c9a24a;
+  --color-border: rgba(201, 162, 74, .25);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html, body { height: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Um “efeito moderno” bem discreto (sem pesar) */
+.bg-grid {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(201, 162, 74, .14), transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, .06), transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(201, 162, 74, .10), transparent 50%);
 }
