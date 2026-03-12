@@ -3,15 +3,23 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
 const updateSchema = z.object({
   title: z.string().min(3),
-  slug: z.string().min(3),
   category: z.string().min(2),
-  summary: z.string().optional().nullable(),
+  summary: z.string().nullable().optional(),
   tags: z.array(z.string()).default([]),
-  contentType: z.enum(["manual", "telegraph"]).default("manual"),
-  telegraphPath: z.string().optional().nullable(),
-  content: z.any().optional().nullable(),
+  telegraphPath: z.string().nullable().optional(),
   published: z.boolean().default(false),
 });
 
@@ -29,7 +37,10 @@ export async function GET(
   });
 
   if (!topic) {
-    return NextResponse.json({ error: "Tópico não encontrado." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Tópico não encontrado." },
+      { status: 404 }
+    );
   }
 
   return NextResponse.json(topic);
@@ -47,17 +58,43 @@ export async function PUT(
     const body = await req.json();
     const data = updateSchema.parse(body);
 
+    const currentTopic = await prisma.topic.findUnique({
+      where: { id },
+    });
+
+    if (!currentTopic) {
+      return NextResponse.json(
+        { error: "Tópico não encontrado." },
+        { status: 404 }
+      );
+    }
+
+    const baseSlug = slugify(data.title);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existing = await prisma.topic.findUnique({
+        where: { slug },
+      });
+
+      if (!existing || existing.id === id) break;
+
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
     const topic = await prisma.topic.update({
       where: { id },
       data: {
         title: data.title,
-        slug: data.slug,
+        slug,
         category: data.category,
         summary: data.summary ?? null,
         tags: data.tags,
-        contentType: data.contentType,
+        contentType: "telegraph",
         telegraphPath: data.telegraphPath ?? null,
-        content: data.content ?? null,
+        //content: null,
         published: data.published,
       },
     });
