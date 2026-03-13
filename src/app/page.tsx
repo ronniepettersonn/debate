@@ -26,7 +26,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen bg-bg bg-grid text-text">
       <HomeLayoutShell>
-        <div className="mx-auto max-w-6xl px-3 py-3 md:px-4 md:py-6">
+        <div className="mx-auto max-w-6xl px-2 py-3 md:px-2 md:py-3">
           <section
             id="topo"
             className="rounded-3xl border border-border bg-panel/45 p-5 backdrop-blur md:p-8"
