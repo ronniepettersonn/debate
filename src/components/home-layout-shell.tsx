@@ -32,7 +32,7 @@ export default function HomeLayoutShell({ children }: HomeLayoutShellProps) {
 
     return (
         <div className="min-h-screen bg-bg bg-grid text-text">
-            <div className="mx-auto flex max-w-7xl gap-3 px-3  md:gap-4 md:px-4 md:py-6">
+            <div className="mx-auto flex max-w-7xl gap-3 px-3 md:gap-4 md:px-4 md:py-6">
                 {/* coluna real do menu recolhido */}
                 <div
                     className={clsx(

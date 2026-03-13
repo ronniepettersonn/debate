@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
@@ -15,7 +14,9 @@ type TgResponse = {
 };
 
 async function getTelegraphPage(path: string) {
-    const url = `https://api.telegra.ph/getPage/${encodeURIComponent(path)}?return_content=true`;
+    const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
+        path
+    )}?return_content=true`;
 
     const res = await fetch(url, {
         next: { revalidate: 60 },
@@ -43,7 +44,10 @@ function isTgNode(value: unknown): value is TgNode {
 
     if (typeof node.tag !== "string") return false;
 
-    if (node.attrs !== undefined && (typeof node.attrs !== "object" || node.attrs === null)) {
+    if (
+        node.attrs !== undefined &&
+        (typeof node.attrs !== "object" || node.attrs === null)
+    ) {
         return false;
     }
 
@@ -88,63 +92,36 @@ export default async function TopicPage({
 
     const manualContent = parseManualContent(topic.content);
 
+    const title = tg?.title ?? topic.title;
+    const contentToRender =
+        topic.contentType === "telegraph" && tg
+            ? tg.content
+            : manualContent;
+
     return (
-        <main className="min-h-screen bg-bg">
-            <div className="mx-auto max-w-3xl px-4 py-10">
-                <Link href="/modo-palco" className="text-sm text-muted hover:text-text">
-                    ← Voltar
-                </Link>
-
-                <div className="mt-4">
-                    <div className="text-xs text-muted">{topic.category}</div>
-
-                    <h1 className="mt-1 text-3xl font-semibold text-gold">
-                        {tg?.title ?? topic.title}
+        <main className="min-h-screen bg-bg text-text">
+            <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-10">
+                <header className="mb-8 md:mb-10">
+                    <h1 className="my-4 text-3xl font-semibold leading-tight text-gold md:text-5xl">
+                        {title}
                     </h1>
+                </header>
 
-                    {topic.summary && <p className="mt-3 text-muted">{topic.summary}</p>}
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        {topic.tags.map((tag) => (
-                            <span
-                                key={tag}
-                                className="rounded-full border border-border bg-panel/40 px-3 py-1 text-xs text-muted"
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-
-                    {tg?.url && (
-                        <a
-                            href={tg.url}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="mt-4 inline-block text-sm text-gold hover:underline"
-                        >
-                            Ver no Telegraph →
-                        </a>
-                    )}
-                </div>
-
-                <section className="mt-8">
-                    {topic.contentType === "telegraph" && tg ? (
-                        <div className="rounded-2xl border border-border bg-panel/25 p-6">
-                            <TelegraphRenderer content={tg.content} />
-                        </div>
-                    ) : topic.contentType === "manual" && manualContent ? (
-                        <div className="rounded-2xl border border-border bg-panel/25 p-6">
-                            <TelegraphRenderer content={manualContent} />
-                        </div>
+                <section className="min-w-0">
+                    {contentToRender ? (
+                        <article className="mx-auto w-full max-w-3xl">
+                            <TelegraphRenderer content={contentToRender} />
+                        </article>
                     ) : (
-                        <div className="rounded-2xl border border-border bg-panel/25 p-6 text-muted">
+                        <div className="mx-auto max-w-3xl text-muted">
                             Este tópico ainda não tem conteúdo disponível.
                         </div>
                     )}
                 </section>
 
-                <footer className="mt-10 border-t border-border pt-6 text-xs text-muted/70">
-                    Atualizado em {new Date(topic.updatedAt).toLocaleDateString("pt-BR")}
+                <footer className="mx-auto mt-12 max-w-3xl border-t border-border pt-6 text-xs text-muted/70">
+                    Atualizado em{" "}
+                    {new Date(topic.updatedAt).toLocaleDateString("pt-BR")}
                 </footer>
             </div>
         </main>
