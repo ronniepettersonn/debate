@@ -69,24 +69,6 @@ export default async function Home() {
         </section>
 
         <section
-          id="glossario"
-          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
-        >
-
-          <h2 className=" text-2xl font-semibold text-gold">Glossário</h2>
-        </section>
-
-        <section
-          id="interpretacoes-gnosticas"
-          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
-        >
-
-          <h2 className="text-2xl font-semibold text-gold">
-            Interpretações Gnósticas
-          </h2>
-        </section>
-
-        <section
           id="artigos"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
@@ -154,6 +136,18 @@ export default async function Home() {
         </section>
 
         <section
+          id="interpretacoes-gnosticas"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
+        >
+
+          <h2 className="text-2xl font-semibold text-gold">
+            Interpretações Gnósticas
+          </h2>
+        </section>
+
+
+
+        <section
           id="patristica"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
@@ -171,6 +165,14 @@ export default async function Home() {
           <h2 className=" text-2xl font-semibold text-gold">
             Sugestões de Leitura
           </h2>
+        </section>
+
+        <section
+          id="glossario"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
+        >
+
+          <h2 className=" text-2xl font-semibold text-gold">Glossário</h2>
         </section>
 
         <footer className="mt-8 border-t border-border pt-6 text-xs text-muted/70">

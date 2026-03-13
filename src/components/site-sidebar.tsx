@@ -6,11 +6,11 @@ import clsx from "clsx";
 
 const MENU_ITEMS = [
     { href: "/", label: "Início", icon: "⌂" },
-    { href: "/#glossario", label: "Glossário", icon: "📘" },
-    { href: "/#interpretacoes-gnosticas", label: "Interpretações", icon: "🧩" },
     { href: "/#artigos", label: "Artigos", icon: "📝" },
+    { href: "/#interpretacoes-gnosticas", label: "Interpretações", icon: "🧩" },
     { href: "/#patristica", label: "Patrística", icon: "⛪" },
     { href: "/#sugestoes-de-leitura", label: "Leituras", icon: "📚" },
+    { href: "/#glossario", label: "Glossário", icon: "📘" },
     //{ href: "/modo-palco", label: "Modo Palco", icon: "🎤" },
 ] as const;
 
