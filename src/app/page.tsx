@@ -97,12 +97,12 @@ export default async function Home() {
               </h2>
             </div>
 
-            <Link
+            {/* <Link
               href="/topicos"
               className="rounded-xl border border-border bg-panel/40 px-4 py-2 text-sm text-text/90 transition hover:bg-panel/60"
             >
               Ver todos
-            </Link>
+            </Link> */}
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2">
@@ -115,7 +115,7 @@ export default async function Home() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-xs text-muted">{t.category}</div>
+                      {/* <div className="text-xs text-muted">{t.category}</div> */}
 
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
@@ -128,20 +128,20 @@ export default async function Home() {
                       )}
 
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {t.tags.slice(0, 3).map((tag) => (
+                        {/* {t.tags.slice(0, 3).map((tag) => (
                           <span
                             key={tag}
                             className="rounded-full border border-border bg-panel/60 px-2.5 py-1 text-xs text-muted"
                           >
                             {tag}
                           </span>
-                        ))}
+                        ))} */}
                       </div>
                     </div>
 
-                    <div className="shrink-0 text-xs text-muted/70">
+                    {/* <div className="shrink-0 text-xs text-muted/70">
                       {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
-                    </div>
+                    </div> */}
                   </div>
                 </Link>
               ))
@@ -158,7 +158,7 @@ export default async function Home() {
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
 
-          <h2 className="mt-2 text-2xl font-semibold text-gold">
+          <h2 className="text-2xl font-semibold text-gold">
             Patrística
           </h2>
         </section>
@@ -168,7 +168,7 @@ export default async function Home() {
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
 
-          <h2 className="mt-2 text-2xl font-semibold text-gold">
+          <h2 className=" text-2xl font-semibold text-gold">
             Sugestões de Leitura
           </h2>
         </section>
