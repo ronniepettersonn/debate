@@ -63,15 +63,9 @@ model VerificationToken {
 
 model Topic {
   id            String   @id @default(cuid())
-  slug          String   @unique
-  title         String
+  telegraphPath String   @unique
   category      String
-  summary       String?
-  tags          String[]
-  contentType   String   @default("manual") // manual | telegraph
-  telegraphPath String?
   content       Json?
-  published     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

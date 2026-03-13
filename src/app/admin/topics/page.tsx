@@ -1,36 +1,27 @@
 "use client";
 
+import LogoutButton from "@/components/logout-button";
 import { useEffect, useState } from "react";
 
 type Topic = {
     id: string;
-    title: string;
-    slug: string;
     category: string;
-    summary: string | null;
-    tags: string[];
-    telegraphPath: string | null;
-    published: boolean;
+    telegraphPath: string;
     updatedAt: string;
 };
 
-
 const emptyForm = {
     id: "",
-    title: "",
     category: "",
-    summary: "",
-    tags: "",
     telegraphPath: "",
-    published: false,
 };
 
 const CATEGORY_OPTIONS = [
-    "Glossário",
-    "Interpretações Gnósticas",
-    "Artigos",
-    "Patrística",
-    "Sugestões de Leitura"
+    { label: "Glossário", value: "GLOSSARIO" },
+    { label: "Interpretações Gnósticas", value: "INTERPRETACOES_GNOSTICAS" },
+    { label: "Artigos", value: "ARTIGO" },
+    { label: "Patrística", value: "PATRISTICA" },
+    { label: "Sugestões de Leitura", value: "SUGESTOES_DE_LEITURA" },
 ];
 
 export default function AdminTopicsPage() {
@@ -65,39 +56,14 @@ export default function AdminTopicsPage() {
     }
 
     useEffect(() => {
-        async function run() {
-            try {
-                const res = await fetch("/api/admin/topics", {
-                    credentials: "include",
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    setError(data.error || "Erro ao carregar tópicos.");
-                    return;
-                }
-
-                setTopics(data);
-            } catch {
-                setError("Erro ao carregar tópicos.");
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        void run();
+        void loadTopics(true);
     }, []);
 
     function fillForm(topic: Topic) {
         setForm({
             id: topic.id,
-            title: topic.title,
             category: topic.category,
-            summary: topic.summary ?? "",
-            tags: topic.tags.join(", "),
             telegraphPath: topic.telegraphPath ?? "",
-            published: topic.published,
         });
     }
 
@@ -112,15 +78,8 @@ export default function AdminTopicsPage() {
         setError("");
 
         const payload = {
-            title: form.title,
             category: form.category,
-            summary: form.summary || null,
-            tags: form.tags
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean),
-            telegraphPath: form.telegraphPath || null,
-            published: form.published,
+            telegraphPath: form.telegraphPath.trim(),
         };
 
         const isEditing = Boolean(form.id);
@@ -176,10 +135,19 @@ export default function AdminTopicsPage() {
         }
     }
 
+    function getCategoryLabel(category: string) {
+        return (
+            CATEGORY_OPTIONS.find((item) => item.value === category)?.label ?? category
+        );
+    }
+
     return (
-        <main className="min-h-screen bg-black text-white p-6 md:p-10">
+        <main className="min-h-screen bg-black p-6 text-white md:p-10">
             <div className="mx-auto max-w-6xl">
-                <h1 className="text-3xl font-semibold">Admin • Tópicos</h1>
+                <div className="flex w-full justify-between">
+                    <h1 className="text-3xl font-semibold">Admin • Tópicos</h1>
+                    <LogoutButton />
+                </div>
                 <p className="mt-2 text-white/60">
                     Cadastro e edição dos tópicos do debate.
                 </p>
@@ -210,20 +178,9 @@ export default function AdminTopicsPage() {
 
                         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
                             <div>
-                                <label className="mb-2 block text-sm">Título</label>
-                                <input
-                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-                                    value={form.title}
-                                    onChange={(e) =>
-                                        setForm((s) => ({ ...s, title: e.target.value }))
-                                    }
-                                />
-                            </div>
-
-                            <div>
                                 <label className="mb-2 block text-sm">Categoria</label>
                                 <select
-                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none min-h-12.5! max-h-12.5! h-full"
                                     value={form.category}
                                     onChange={(e) =>
                                         setForm((s) => ({ ...s, category: e.target.value }))
@@ -231,41 +188,17 @@ export default function AdminTopicsPage() {
                                 >
                                     <option value="">Selecione uma categoria</option>
                                     {CATEGORY_OPTIONS.map((category) => (
-                                        <option key={category} value={category}>
-                                            {category}
+                                        <option key={category.value} value={category.value}>
+                                            {category.label}
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="mb-2 block text-sm">Resumo</label>
-                                <textarea
-                                    className="min-h-[90px] w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-                                    value={form.summary}
-                                    onChange={(e) =>
-                                        setForm((s) => ({ ...s, summary: e.target.value }))
-                                    }
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-sm">
-                                    Tags (separadas por vírgula)
-                                </label>
-                                <input
-                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-                                    value={form.tags}
-                                    onChange={(e) =>
-                                        setForm((s) => ({ ...s, tags: e.target.value }))
-                                    }
-                                />
-                            </div>
-
-                            <div>
                                 <label className="mb-2 block text-sm">Telegraph Path</label>
                                 <input
-                                    placeholder="Ex.: Otávio-de-Minúcio-Félix-02-26"
+                                    placeholder="Ex.: Otavio-de-Minucio-Felix-02-26"
                                     className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
                                     value={form.telegraphPath}
                                     onChange={(e) =>
@@ -274,23 +207,16 @@ export default function AdminTopicsPage() {
                                 />
                             </div>
 
-                            <label className="flex items-center gap-3 text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={form.published}
-                                    onChange={(e) =>
-                                        setForm((s) => ({ ...s, published: e.target.checked }))
-                                    }
-                                />
-                                Publicado
-                            </label>
-
                             <button
                                 type="submit"
                                 disabled={saving}
                                 className="w-full rounded-xl bg-white px-4 py-3 font-medium text-black disabled:opacity-60"
                             >
-                                {saving ? "Salvando..." : form.id ? "Atualizar tópico" : "Criar tópico"}
+                                {saving
+                                    ? "Salvando..."
+                                    : form.id
+                                        ? "Atualizar tópico"
+                                        : "Criar tópico"}
                             </button>
                         </form>
                     </section>
@@ -301,7 +227,9 @@ export default function AdminTopicsPage() {
                         {loading ? (
                             <p className="mt-4 text-white/60">Carregando...</p>
                         ) : topics.length === 0 ? (
-                            <p className="mt-4 text-white/60">Nenhum tópico cadastrado ainda.</p>
+                            <p className="mt-4 text-white/60">
+                                Nenhum tópico cadastrado ainda.
+                            </p>
                         ) : (
                             <div className="mt-5 space-y-3">
                                 {topics.map((topic) => (
@@ -311,29 +239,16 @@ export default function AdminTopicsPage() {
                                     >
                                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                             <div>
-                                                <div className="text-sm text-white/50">{topic.category}</div>
-                                                <h3 className="mt-1 text-lg font-medium">{topic.title}</h3>
-                                                <p className="mt-1 text-sm text-white/60">{topic.slug}</p>
-
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    {topic.tags.map((tag) => (
-                                                        <span
-                                                            key={tag}
-                                                            className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/70"
-                                                        >
-                                                            {tag}
-                                                        </span>
-                                                    ))}
+                                                <div className="text-sm text-white/50">
+                                                    {getCategoryLabel(topic.category)}
                                                 </div>
 
-                                                {topic.telegraphPath && (
-                                                    <div className="mt-3 text-xs text-white/40">
-                                                        Telegraph: {topic.telegraphPath}
-                                                    </div>
-                                                )}
+                                                <h3 className="mt-1 break-all text-lg font-medium">
+                                                    {topic.telegraphPath}
+                                                </h3>
 
-                                                <div className="mt-2 text-xs text-white/40">
-                                                    {topic.published ? "Publicado" : "Rascunho"} •{" "}
+                                                <div className="mt-3 text-xs text-white/40">
+                                                    Atualizado em{" "}
                                                     {new Date(topic.updatedAt).toLocaleDateString("pt-BR")}
                                                 </div>
                                             </div>

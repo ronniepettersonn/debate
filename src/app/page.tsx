@@ -1,31 +1,74 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import HomeLayoutShell from "@/components/home-layout-shell";
+
+type TgTitleResponse = {
+  ok: boolean;
+  result?: {
+    title: string;
+  };
+};
+
+async function getTelegraphTitle(path: string) {
+  const url = `https://api.telegra.ph/getPage/${encodeURIComponent(path)}?return_content=false`;
+
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) {
+      throw new Error("Falha ao buscar título no Telegraph");
+    }
+
+    const data: TgTitleResponse = await res.json();
+
+    if (!data.ok || !data.result) {
+      throw new Error("Resposta inválida do Telegraph");
+    }
+
+    return data.result.title;
+  } catch (error) {
+    console.error(`Erro ao buscar título do Telegraph para ${path}:`, error);
+    return "Título indisponível";
+  }
+}
 
 export default async function Home() {
   const topics = await prisma.topic.findMany({
-    where: {
-      published: true,
-    },
     orderBy: {
       updatedAt: "desc",
     },
     select: {
       id: true,
-      slug: true,
-      title: true,
+      telegraphPath: true,
       category: true,
-      summary: true,
-      tags: true,
       updatedAt: true,
     },
   });
 
-  const recentArticles = topics.slice(0, 8);
+  const topicsWithTitle = await Promise.all(
+    topics.map(async (topic) => {
+      const title = await getTelegraphTitle(topic.telegraphPath);
+
+      return {
+        ...topic,
+        title,
+      };
+    })
+  );
+
+  const articles = topicsWithTitle.filter((t) => t.category === "ARTIGO");
+  const interpretacoesGnosticas = topicsWithTitle.filter(
+    (t) => t.category === "INTERPRETACOES_GNOSTICAS"
+  );
+  const patristica = topicsWithTitle.filter((t) => t.category === "PATRISTICA");
+  const sugestoesDeLeitura = topicsWithTitle.filter(
+    (t) => t.category === "SUGESTOES_DE_LEITURA"
+  );
+  const glossario = topicsWithTitle.filter((t) => t.category === "GLOSSARIO");
 
   return (
     <main className="min-h-screen bg-bg bg-grid text-text">
-
       <div className="mx-auto max-w-6xl px-2 py-3 md:px-2 md:py-3">
         <section
           id="topo"
@@ -74,9 +117,7 @@ export default async function Home() {
         >
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-gold">
-                Artigos
-              </h2>
+              <h2 className="text-2xl font-semibold text-gold">Artigos</h2>
             </div>
 
             {/* <Link
@@ -87,44 +128,36 @@ export default async function Home() {
             </Link> */}
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {recentArticles.length > 0 ? (
-              recentArticles.map((t) => (
-                <Link
+          {/* EXEMPLO DO CARD QUE TINHA ANTES */}
+
+          {/* <Link
                   key={t.id}
                   href={`/topicos/${t.slug}`}
                   className="rounded-2xl border border-border bg-panel/45 p-5 transition hover:bg-panel/60"
-                >
+                  >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      {/* <div className="text-xs text-muted">{t.category}</div> */}
+                  <div className="min-w-0">
+                  
+                  <h3 className="mt-1 text-base font-medium text-text">
+                  {t.title}
+                  </h3>
+                  
+                  </div>
+                  
+                  </div>
+                  </Link> */}
 
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {articles.length > 0 ? (
+              articles.map((t) => (
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
+                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                    <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
                       </h3>
-
-                      {t.summary && (
-                        <p className="mt-2 line-clamp-3 text-sm text-muted">
-                          {t.summary}
-                        </p>
-                      )}
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {/* {t.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-border bg-panel/60 px-2.5 py-1 text-xs text-muted"
-                          >
-                            {tag}
-                          </span>
-                        ))} */}
-                      </div>
-                    </div>
-
-                    {/* <div className="shrink-0 text-xs text-muted/70">
-                      {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
-                    </div> */}
-                  </div>
+                    </li>
+                  </ul>
                 </Link>
               ))
             ) : (
@@ -139,40 +172,112 @@ export default async function Home() {
           id="interpretacoes-gnosticas"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
-
           <h2 className="text-2xl font-semibold text-gold">
             Interpretações Gnósticas
           </h2>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {interpretacoesGnosticas.length > 0 ? (
+              interpretacoesGnosticas.map((t) => (
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
+                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
         </section>
-
-
 
         <section
           id="patristica"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
+          <h2 className="text-2xl font-semibold text-gold">Patrística</h2>
 
-          <h2 className="text-2xl font-semibold text-gold">
-            Patrística
-          </h2>
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {patristica.length > 0 ? (
+              patristica.map((t) => (
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
+                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
         </section>
 
         <section
           id="sugestoes-de-leitura"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
-
           <h2 className=" text-2xl font-semibold text-gold">
             Sugestões de Leitura
           </h2>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {sugestoesDeLeitura.length > 0 ? (
+              sugestoesDeLeitura.map((t) => (
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
+                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
         </section>
 
         <section
           id="glossario"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
-
           <h2 className=" text-2xl font-semibold text-gold">Glossário</h2>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {glossario.length > 0 ? (
+              glossario.map((t) => (
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
+                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
         </section>
 
         <footer className="mt-8 border-t border-border pt-6 text-xs text-muted/70">
@@ -180,6 +285,6 @@ export default async function Home() {
           esconder a navegação.
         </footer>
       </div>
-    </main >
+    </main>
   );
 }

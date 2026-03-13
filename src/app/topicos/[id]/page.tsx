@@ -22,6 +22,10 @@ async function getTelegraphPage(path: string) {
         next: { revalidate: 60 },
     });
 
+    if (!res.ok) {
+        throw new Error("Telegraph: falha na resposta da API");
+    }
+
     const data: TgResponse = await res.json();
 
     if (!data.ok || !data.result) {
@@ -70,19 +74,19 @@ function parseManualContent(content: unknown): TgNode[] | null {
 export default async function TopicPage({
     params,
 }: {
-    params: Promise<{ slug: string }>;
+    params: Promise<{ id: string }>;
 }) {
-    const { slug } = await params;
+    const { id } = await params;
 
     const topic = await prisma.topic.findUnique({
-        where: { slug },
+        where: { id },
     });
 
     if (!topic) return notFound();
 
     let tg: TgResponse["result"] | null = null;
 
-    if (topic.contentType === "telegraph" && topic.telegraphPath) {
+    if (topic.telegraphPath) {
         try {
             tg = await getTelegraphPage(topic.telegraphPath);
         } catch (error) {
@@ -92,11 +96,8 @@ export default async function TopicPage({
 
     const manualContent = parseManualContent(topic.content);
 
-    const title = tg?.title ?? topic.title;
-    const contentToRender =
-        topic.contentType === "telegraph" && tg
-            ? tg.content
-            : manualContent;
+    const title = tg?.title ?? "Sem título";
+    const contentToRender = tg?.content ?? manualContent;
 
     return (
         <main className="min-h-screen bg-bg text-text">

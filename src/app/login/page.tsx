@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PiEye, PiEyeClosed } from "react-icons/pi";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -9,6 +10,8 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+
+    const [see, setSee] = useState(false)
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -54,12 +57,27 @@ export default function LoginPage() {
 
                 <div className="mt-4">
                     <label className="mb-2 block text-sm">Senha</label>
-                    <input
-                        type="password"
-                        className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <div className="relative">
+
+                        <input
+                            type={!see ? 'password' : 'text'}
+                            className="w-full rounded-xl pr-15 border border-white/10 bg-black/30 px-4 py-3 outline-none"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                        {
+                            password ?
+                                !see ? (
+                                    <button className="absolute right-5 bottom-0 top-0 text-white/40" type="button" onClick={() => setSee(true)}>
+                                        <PiEye size={24} />
+                                    </button>
+                                ) : (
+                                    <button className="absolute right-5 bottom-0 top-0 text-white/40" type="button" onClick={() => setSee(false)}>
+                                        <PiEyeClosed size={24} />
+                                    </button>
+                                ) : null
+                        }
+                    </div>
                 </div>
 
                 {error && (

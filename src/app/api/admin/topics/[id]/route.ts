@@ -3,24 +3,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
 const updateSchema = z.object({
-  title: z.string().min(3),
-  category: z.string().min(2),
-  summary: z.string().nullable().optional(),
-  tags: z.array(z.string()).default([]),
-  telegraphPath: z.string().nullable().optional(),
-  published: z.boolean().default(false),
+  telegraphPath: z.string().min(1, "telegraphPath é obrigatório"),
+  category: z.string().min(2, "category é obrigatória"),
+  content: z.any().optional(),
 });
 
 export async function GET(
@@ -69,39 +55,46 @@ export async function PUT(
       );
     }
 
-    const baseSlug = slugify(data.title);
-    let slug = baseSlug;
-    let counter = 1;
+    const normalizedCategory = data.category.trim().toUpperCase();
+    const normalizedTelegraphPath = data.telegraphPath.trim();
 
-    while (true) {
-      const existing = await prisma.topic.findUnique({
-        where: { slug },
-      });
+    const existingTopicWithSamePath = await prisma.topic.findUnique({
+      where: { telegraphPath: normalizedTelegraphPath },
+    });
 
-      if (!existing || existing.id === id) break;
-
-      slug = `${baseSlug}-${counter}`;
-      counter++;
+    if (
+      existingTopicWithSamePath &&
+      existingTopicWithSamePath.id !== id
+    ) {
+      return NextResponse.json(
+        { error: "Já existe outro tópico com esse telegraphPath." },
+        { status: 409 }
+      );
     }
 
     const topic = await prisma.topic.update({
       where: { id },
       data: {
-        title: data.title,
-        slug,
-        category: data.category,
-        summary: data.summary ?? null,
-        tags: data.tags,
-        contentType: "telegraph",
-        telegraphPath: data.telegraphPath ?? null,
-        //content: null,
-        published: data.published,
+        telegraphPath: normalizedTelegraphPath,
+        category: normalizedCategory,
+        content: data.content ?? undefined,
       },
     });
 
     return NextResponse.json(topic);
   } catch (error) {
     console.error(error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          error: "Dados inválidos.",
+          issues: error.flatten(),
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Erro ao atualizar tópico." },
       { status: 400 }
@@ -118,6 +111,17 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+
+    const currentTopic = await prisma.topic.findUnique({
+      where: { id },
+    });
+
+    if (!currentTopic) {
+      return NextResponse.json(
+        { error: "Tópico não encontrado." },
+        { status: 404 }
+      );
+    }
 
     await prisma.topic.delete({
       where: { id },

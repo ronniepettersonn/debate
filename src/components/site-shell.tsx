@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import SiteSidebar from "@/components/site-sidebar";
 
 type SiteShellProps = {
@@ -9,6 +10,17 @@ type SiteShellProps = {
 
 export default function SiteShell({ children }: SiteShellProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const pathname = usePathname();
+
+    const isAdminRoute = pathname.startsWith("/admin");
+
+    if (isAdminRoute) {
+        return (
+            <div className="min-h-screen bg-bg bg-grid text-text">
+                <main className="min-w-0">{children}</main>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-bg bg-grid text-text">
@@ -31,7 +43,7 @@ export default function SiteShell({ children }: SiteShellProps) {
                 </div>
             </div>
 
-            <div className="mx-auto flex max-w-7xl gap-3 md:gap-4 ">
+            <div className="mx-auto flex max-w-7xl gap-3 md:gap-4">
                 <SiteSidebar
                     mobileOpen={mobileOpen}
                     onClose={() => setMobileOpen(false)}
