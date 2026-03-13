@@ -10,7 +10,10 @@
   --color-border: rgba(201, 162, 74, .25);
 }
 
-html, body { height: 100%; }
+html, body { 
+  height: 100%; 
+  scroll-behavior: smooth;
+}
 
 body {
   background: var(--color-bg);

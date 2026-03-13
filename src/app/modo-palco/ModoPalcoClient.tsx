@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type TopicCategory =
-    | "Versículos"
-    | "Reformadores"
-    | "Fontes Gnósticas"
-    | "Notas Históricas";
+    | "Glossário"
+    | "Interpretações Gnósticas"
+    | "Artigos"
+    | "Patrística"
+    | "Sugestões de Leitura";
 
 type Topic = {
     id: string;
@@ -22,10 +23,11 @@ type CategoryFilter = TopicCategory | "Todas";
 
 const FILTERS: Array<{ key: CategoryFilter; label: string; hotkey: string }> = [
     { key: "Todas", label: "Todas", hotkey: "0" },
-    { key: "Versículos", label: "Versículos", hotkey: "1" },
-    { key: "Reformadores", label: "Reformadores", hotkey: "2" },
-    { key: "Fontes Gnósticas", label: "Fontes Gnósticas", hotkey: "3" },
-    { key: "Notas Históricas", label: "Notas Históricas", hotkey: "4" },
+    { key: "Glossário", label: "Glossário", hotkey: "1" },
+    { key: "Interpretações Gnósticas", label: "Interpretações Gnósticas", hotkey: "2" },
+    { key: "Artigos", label: "Artigos", hotkey: "3" },
+    { key: "Patrística", label: "Patrística", hotkey: "4" },
+    { key: "Sugestões de Leitura", label: "Sugestões de Leitura", hotkey: "5" },
 ];
 
 function normalize(s: string) {
@@ -103,7 +105,7 @@ export default function ModoPalcoClient({ topics }: { topics: Topic[] }) {
                             </h1>
                             <p className="mt-2 text-sm text-muted md:text-base">
                                 Use <span className="text-text/90">/</span> para buscar,{" "}
-                                <span className="text-text/90">1–4</span> para filtrar,{" "}
+                                <span className="text-text/90">1–5</span> para filtrar,{" "}
                                 <span className="text-text/90">Esc</span> para limpar.
                             </p>
                         </div>

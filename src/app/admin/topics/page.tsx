@@ -26,10 +26,11 @@ const emptyForm = {
 };
 
 const CATEGORY_OPTIONS = [
-    "Versículos",
-    "Reformadores",
-    "Fontes Gnósticas",
-    "Notas Históricas",
+    "Glossário",
+    "Interpretações Gnósticas",
+    "Artigos",
+    "Patrística",
+    "Sugestões de Leitura"
 ];
 
 export default function AdminTopicsPage() {
