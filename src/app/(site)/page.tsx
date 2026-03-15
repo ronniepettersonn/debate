@@ -167,38 +167,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section
-          id="videos"
-          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
-        >
-          <h2 className="text-2xl font-semibold text-gold">Vídeos</h2>
 
-          <div className="mt-6 grid gap-3">
-            {videos.length > 0 ? (
-              videos.map((t) => (
-                <a
-                  key={t.id}
-                  href={t.youtubeUrl ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-2xl"
-                >
-                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
-                    <li className="min-w-0">
-                      <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
-                      </h3>
-                    </li>
-                  </ul>
-                </a>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
-                Nenhum vídeo cadastrado ainda.
-              </div>
-            )}
-          </div>
-        </section>
 
         <section
           id="interpretacoes-gnosticas"
@@ -229,6 +198,8 @@ export default async function Home() {
           </div>
         </section>
 
+
+
         <section
           id="patristica"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
@@ -251,6 +222,39 @@ export default async function Home() {
             ) : (
               <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
                 Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
+          id="videos"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
+        >
+          <h2 className="text-2xl font-semibold text-gold">Vídeos</h2>
+
+          <div className="mt-6 grid gap-3">
+            {videos.length > 0 ? (
+              videos.map((t) => (
+                <a
+                  key={t.id}
+                  href={t.youtubeUrl ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-2xl"
+                >
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </a>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum vídeo cadastrado ainda.
               </div>
             )}
           </div>
