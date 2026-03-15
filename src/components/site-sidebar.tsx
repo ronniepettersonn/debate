@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
+import { FaBook, FaChurch, FaHeadSideVirus, FaHome, FaNewspaper, FaPaperPlane } from "react-icons/fa";
+import { FaBookOpenReader, FaBookSkull } from "react-icons/fa6";
 
 const MENU_ITEMS = [
-    { href: "/", label: "Início", icon: "⌂" },
-    { href: "/#artigos", label: "Artigos", icon: "📝" },
-    { href: "/#interpretacoes-gnosticas", label: "Interpretações", icon: "🧩" },
-    { href: "/#patristica", label: "Patrística", icon: "⛪" },
-    { href: "/#sugestoes-de-leitura", label: "Leituras", icon: "📚" },
-    { href: "/#glossario", label: "Glossário", icon: "📘" },
+    { href: "/", label: "Início", icon: <FaHome /> },
+    { href: "/#artigos", label: "Artigos", icon: <FaNewspaper /> },
+    { href: "/#interpretacoes-gnosticas", label: "Interpretações Gnósticas", icon: <FaHeadSideVirus /> },
+    { href: "/#patristica", label: "Patrística", icon: <FaChurch /> },
+    { href: "/#sugestoes-de-leitura", label: "Leituras", icon: <FaBookOpenReader /> },
+    { href: "/#glossario", label: "Glossário", icon: <FaBook /> },
     //{ href: "/modo-palco", label: "Modo Palco", icon: "🎤" },
 ] as const;
 

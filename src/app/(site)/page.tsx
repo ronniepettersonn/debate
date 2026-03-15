@@ -8,8 +8,24 @@ type TgTitleResponse = {
   };
 };
 
+type TopicWithDisplay = {
+  id: string;
+  telegraphPath: string;
+  category: string;
+  youtubeUrl: string | null;
+  updatedAt: Date;
+  display: {
+    id: string;
+    topicId: string;
+    category: string;
+    displayOrder: number;
+  } | null;
+};
+
 async function getTelegraphTitle(path: string) {
-  const url = `https://api.telegra.ph/getPage/${encodeURIComponent(path)}?return_content=false`;
+  const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
+    path
+  )}?return_content=false`;
 
   try {
     const res = await fetch(url, {
@@ -33,16 +49,33 @@ async function getTelegraphTitle(path: string) {
   }
 }
 
+function sortByDisplayOrder<T extends { display: { displayOrder: number } | null }>(
+  items: T[]
+) {
+  return [...items].sort((a, b) => {
+    const orderA = a.display?.displayOrder ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.display?.displayOrder ?? Number.MAX_SAFE_INTEGER;
+
+    return orderA - orderB;
+  });
+}
+
 export default async function Home() {
   const topics = await prisma.topic.findMany({
-    orderBy: {
-      updatedAt: "desc",
-    },
     select: {
       id: true,
       telegraphPath: true,
       category: true,
+      youtubeUrl: true,
       updatedAt: true,
+      display: {
+        select: {
+          id: true,
+          topicId: true,
+          category: true,
+          displayOrder: true,
+        },
+      },
     },
   });
 
@@ -57,15 +90,29 @@ export default async function Home() {
     })
   );
 
-  const articles = topicsWithTitle.filter((t) => t.category === "ARTIGO");
-  const interpretacoesGnosticas = topicsWithTitle.filter(
-    (t) => t.category === "INTERPRETACOES_GNOSTICAS"
+  const articles = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "ARTIGO")
   );
-  const patristica = topicsWithTitle.filter((t) => t.category === "PATRISTICA");
-  const sugestoesDeLeitura = topicsWithTitle.filter(
-    (t) => t.category === "SUGESTOES_DE_LEITURA"
+
+  const videos = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "VIDEOS" && t.youtubeUrl)
   );
-  const glossario = topicsWithTitle.filter((t) => t.category === "GLOSSARIO");
+
+  const interpretacoesGnosticas = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "INTERPRETACOES_GNOSTICAS")
+  );
+
+  const patristica = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "PATRISTICA")
+  );
+
+  const sugestoesDeLeitura = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "SUGESTOES_DE_LEITURA")
+  );
+
+  const glossario = sortByDisplayOrder(
+    topicsWithTitle.filter((t) => t.category === "GLOSSARIO")
+  );
 
   return (
     <main className="min-h-screen bg-bg bg-grid text-text">
@@ -84,29 +131,7 @@ export default async function Home() {
                 <h1 className="mt-2 text-3xl font-semibold text-gold md:text-5xl">
                   As Origens Gnósticas do Calvinismo
                 </h1>
-
-                {/* <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted md:text-base">
-                  Uma navegação em formato de landing page para consulta rápida
-                  durante o debate, com acesso a glossário, interpretações
-                  gnósticas, artigos, patrística e sugestões de leitura.
-                </p> */}
               </div>
-
-              {/* <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/modo-palco"
-                  className="rounded-xl border border-border bg-panel/40 px-4 py-2 text-sm text-gold transition hover:bg-panel/60"
-                >
-                  Modo Palco
-                </Link>
-
-                <Link
-                  href="/topicos"
-                  className="rounded-xl border border-border bg-panel/40 px-4 py-2 text-sm text-text/90 transition hover:bg-panel/60"
-                >
-                  Ver todos os tópicos
-                </Link>
-              </div> */}
             </div>
           </div>
         </section>
@@ -119,39 +144,13 @@ export default async function Home() {
             <div>
               <h2 className="text-2xl font-semibold text-gold">Artigos</h2>
             </div>
-
-            {/* <Link
-              href="/topicos"
-              className="rounded-xl border border-border bg-panel/40 px-4 py-2 text-sm text-text/90 transition hover:bg-panel/60"
-            >
-              Ver todos
-            </Link> */}
           </div>
 
-          {/* EXEMPLO DO CARD QUE TINHA ANTES */}
-
-          {/* <Link
-                  key={t.id}
-                  href={`/topicos/${t.slug}`}
-                  className="rounded-2xl border border-border bg-panel/45 p-5 transition hover:bg-panel/60"
-                  >
-                  <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                  
-                  <h3 className="mt-1 text-base font-medium text-text">
-                  {t.title}
-                  </h3>
-                  
-                  </div>
-                  
-                  </div>
-                  </Link> */}
-
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-3">
             {articles.length > 0 ? (
               articles.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
-                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
@@ -169,6 +168,39 @@ export default async function Home() {
         </section>
 
         <section
+          id="videos"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
+        >
+          <h2 className="text-2xl font-semibold text-gold">Vídeos</h2>
+
+          <div className="mt-6 grid gap-3">
+            {videos.length > 0 ? (
+              videos.map((t) => (
+                <a
+                  key={t.id}
+                  href={t.youtubeUrl ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-2xl"
+                >
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {t.title}
+                      </h3>
+                    </li>
+                  </ul>
+                </a>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum vídeo cadastrado ainda.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
           id="interpretacoes-gnosticas"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
@@ -176,11 +208,11 @@ export default async function Home() {
             Interpretações Gnósticas
           </h2>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-3">
             {interpretacoesGnosticas.length > 0 ? (
               interpretacoesGnosticas.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
-                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
@@ -203,11 +235,11 @@ export default async function Home() {
         >
           <h2 className="text-2xl font-semibold text-gold">Patrística</h2>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-3">
             {patristica.length > 0 ? (
               patristica.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
-                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
@@ -232,11 +264,11 @@ export default async function Home() {
             Sugestões de Leitura
           </h2>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-3">
             {sugestoesDeLeitura.length > 0 ? (
               sugestoesDeLeitura.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
-                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}
@@ -259,11 +291,11 @@ export default async function Home() {
         >
           <h2 className=" text-2xl font-semibold text-gold">Glossário</h2>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="mt-6 grid gap-3">
             {glossario.length > 0 ? (
               glossario.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl ">
-                  <ul className="flex items-start justify-between gap-4 list-disc pl-6">
+                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
                         {t.title}

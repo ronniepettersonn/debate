@@ -64,8 +64,24 @@ model VerificationToken {
 model Topic {
   id            String   @id @default(cuid())
   telegraphPath String   @unique
+  title         String?
   category      String
+  youtubeUrl    String?
   content       Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  display TopicDisplay?
+}
+
+model TopicDisplay {
+  id           String @id @default(cuid())
+  topicId      String @unique
+  category     String
+  displayOrder Int
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([category, displayOrder])
+  @@index([category, displayOrder])
 }
