@@ -85,7 +85,7 @@ export function renderTelegraphNode(
                     key={key}
                     src={src}
                     alt={alt}
-                    className="my-6 w-full rounded-2xl border border-border object-cover"
+                    className="my-6 w-full rounded-2xl  object-cover"
                     loading="lazy"
                 />
             );
@@ -150,7 +150,7 @@ export function renderTelegraphNode(
             return (
                 <aside
                     key={key}
-                    className="my-6 rounded-2xl border border-border bg-panel/40 p-4 text-sm leading-relaxed text-muted"
+                    className="italic my-6 rounded-2xl  bg-panel px-16 py-10 text-lg leading-relaxed text-muted text-center whitespace-pre-wrap"
                 >
                     {kids}
                 </aside>
@@ -158,6 +158,12 @@ export function renderTelegraphNode(
 
         case "li":
             return <li key={key}>{kids}</li>;
+
+        case "u":
+            return <u key={key}>{kids}</u>;
+
+        case "hr":
+            return <hr className="max-w-[50%] mx-auto my-8 border-border/50" key={key} />;
 
         default:
             return (
