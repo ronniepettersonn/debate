@@ -1,3 +1,4 @@
+import Link from "next/link";
 import React from "react";
 
 export type TgNode =
@@ -62,7 +63,7 @@ export function renderTelegraphNode(
             const external = isExternal(href);
 
             return (
-                <a
+                <Link
                     key={key}
                     href={external ? href : '/artigos' + href}
                     target={external ? "_blank" : undefined}
@@ -70,7 +71,7 @@ export function renderTelegraphNode(
                     className="text-gold hover:underline"
                 >
                     {kids}
-                </a>
+                </Link>
             );
         }
 
