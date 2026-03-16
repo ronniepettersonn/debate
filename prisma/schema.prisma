@@ -63,7 +63,7 @@ model VerificationToken {
 
 model Topic {
   id            String   @id @default(cuid())
-  telegraphPath String   @unique
+  telegraphPath String?  @unique
   title         String?
   category      String
   youtubeUrl    String?

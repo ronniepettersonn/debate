@@ -7,7 +7,7 @@ type Topic = {
     id: string;
     title?: string | null;
     category: string;
-    telegraphPath: string;
+    telegraphPath?: string | null;
     youtubeUrl?: string | null;
     updatedAt: string;
     display?: {
@@ -117,7 +117,7 @@ export default function AdminTopicsPage() {
             return;
         }
 
-        if (!normalizedTelegraphPath) {
+        if (!isVideoCategory && !normalizedTelegraphPath) {
             setError("Informe o Telegraph Path.");
             setSaving(false);
             return;
@@ -137,9 +137,9 @@ export default function AdminTopicsPage() {
 
         const payload = {
             category: normalizedCategory,
-            telegraphPath: normalizedTelegraphPath,
+            telegraphPath: normalizedTelegraphPath || null,
             displayOrder: parsedDisplayOrder,
-            youtubeUrl: isVideoCategory ? normalizedYoutubeUrl : "",
+            youtubeUrl: isVideoCategory ? normalizedYoutubeUrl || null : null,
         };
 
         const isEditing = Boolean(form.id);
@@ -253,8 +253,8 @@ export default function AdminTopicsPage() {
 
             if (orderA !== orderB) return orderA - orderB;
 
-            const textA = (a.title || a.telegraphPath).toLowerCase();
-            const textB = (b.title || b.telegraphPath).toLowerCase();
+            const textA = (a.title || a.telegraphPath || a.youtubeUrl || "").toLowerCase();
+            const textB = (b.title || b.telegraphPath || b.youtubeUrl || "").toLowerCase();
 
             return textA.localeCompare(textB);
         });
@@ -347,11 +347,18 @@ export default function AdminTopicsPage() {
 
                             <div>
                                 <label className="mb-2 block text-sm text-white/80">
-                                    Telegraph Path
+                                    Telegraph Path{" "}
+                                    {isVideoCategory && (
+                                        <span className="text-white/40">(opcional para vídeos)</span>
+                                    )}
                                 </label>
                                 <input
-                                    required
-                                    placeholder="Ex.: Otavio-de-Minucio-Felix-02-26"
+                                    required={!isVideoCategory}
+                                    placeholder={
+                                        isVideoCategory
+                                            ? "Opcional para vídeos"
+                                            : "Ex.: Otavio-de-Minucio-Felix-02-26"
+                                    }
                                     className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none transition focus:border-white/20"
                                     value={form.telegraphPath}
                                     onChange={(e) =>
@@ -467,12 +474,18 @@ export default function AdminTopicsPage() {
                                                     </div>
 
                                                     <h3 className="mt-3 break-words text-lg font-semibold text-white">
-                                                        {topic.title || topic.telegraphPath}
+                                                        {topic.title ||
+                                                            topic.telegraphPath ||
+                                                            (topic.category === "VIDEOS"
+                                                                ? "Vídeo sem título"
+                                                                : "Tópico sem título")}
                                                     </h3>
 
-                                                    <div className="mt-1 break-all text-sm text-white/45">
-                                                        {topic.telegraphPath}
-                                                    </div>
+                                                    {topic.telegraphPath && (
+                                                        <div className="mt-1 break-all text-sm text-white/45">
+                                                            {topic.telegraphPath}
+                                                        </div>
+                                                    )}
 
                                                     {topic.category === "VIDEOS" && topic.youtubeUrl && (
                                                         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">

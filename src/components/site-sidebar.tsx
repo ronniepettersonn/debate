@@ -2,18 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { FaBook, FaChurch, FaHeadSideVirus, FaHome, FaNewspaper, FaPaperPlane } from "react-icons/fa";
-import { FaBookOpenReader, FaBookSkull } from "react-icons/fa6";
+import {
+    FaBook,
+    FaChurch,
+    FaHeadSideVirus,
+    FaHome,
+    FaNewspaper,
+} from "react-icons/fa";
+import { FaBookOpenReader } from "react-icons/fa6";
 
 const MENU_ITEMS = [
-    { href: "/", label: "Início", icon: <FaHome /> },
+    { href: "/#topo", label: "Início", icon: <FaHome /> },
     { href: "/#artigos", label: "Artigos", icon: <FaNewspaper /> },
-    { href: "/#interpretacoes-gnosticas", label: "Interpretações Gnósticas", icon: <FaHeadSideVirus /> },
+    {
+        href: "/#interpretacoes-gnosticas",
+        label: "Interpretações Gnósticas",
+        icon: <FaHeadSideVirus />,
+    },
     { href: "/#patristica", label: "Patrística", icon: <FaChurch /> },
-    { href: "/#sugestoes-de-leitura", label: "Leituras", icon: <FaBookOpenReader /> },
+    {
+        href: "/#sugestoes-de-leitura",
+        label: "Leituras",
+        icon: <FaBookOpenReader />,
+    },
     { href: "/#glossario", label: "Glossário", icon: <FaBook /> },
-    //{ href: "/modo-palco", label: "Modo Palco", icon: "🎤" },
 ] as const;
 
 type SiteSidebarProps = {
@@ -21,21 +35,69 @@ type SiteSidebarProps = {
     onClose: () => void;
 };
 
+function getCurrentHash() {
+    if (typeof window === "undefined") return "";
+    return window.location.hash || "";
+}
+
+function getActiveHref(pathname: string, currentHash: string) {
+    if (pathname === "/") {
+        if (currentHash) {
+            return `/${currentHash}`;
+        }
+
+        return "/#topo";
+    }
+
+    if (pathname.startsWith("/artigos/")) {
+        return "/#artigos";
+    }
+
+    if (pathname.startsWith("/interpretacoes-gnosticas/")) {
+        return "/#interpretacoes-gnosticas";
+    }
+
+    if (pathname.startsWith("/patristica/")) {
+        return "/#patristica";
+    }
+
+    if (pathname.startsWith("/sugestoes-de-leitura/")) {
+        return "/#sugestoes-de-leitura";
+    }
+
+    if (pathname.startsWith("/glossario/")) {
+        return "/#glossario";
+    }
+
+    return pathname;
+}
+
 export default function SiteSidebar({
     mobileOpen,
     onClose,
 }: SiteSidebarProps) {
     const pathname = usePathname();
+    const [currentHash, setCurrentHash] = useState(() => getCurrentHash());
+
+    useEffect(() => {
+        const updateHash = () => {
+            setCurrentHash(getCurrentHash());
+        };
+
+        window.addEventListener("hashchange", updateHash);
+
+        return () => {
+            window.removeEventListener("hashchange", updateHash);
+        };
+    }, []);
+
+    const activeHref = useMemo(() => {
+        return getActiveHref(pathname, currentHash);
+    }, [pathname, currentHash]);
 
     const renderItems = (isMobileMenu = false) =>
         MENU_ITEMS.map((item) => {
-            const isAnchorToHome = item.href.startsWith("/#");
-            const isActive =
-                item.href === "/"
-                    ? pathname === "/"
-                    : isAnchorToHome
-                        ? pathname === "/"
-                        : pathname.startsWith(item.href);
+            const isActive = item.href === activeHref;
 
             const className = clsx(
                 "flex h-12 items-center gap-3 rounded-2xl px-4 text-sm transition",
@@ -53,28 +115,49 @@ export default function SiteSidebar({
                 </>
             );
 
-            if (isAnchorToHome) {
-                return (
-                    <a
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => {
-                            if (isMobileMenu) onClose();
-                        }}
-                        className={className}
-                    >
-                        {content}
-                    </a>
-                );
-            }
+            const handleClick = (
+                e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>
+            ) => {
+                if (item.href === "/#topo" && pathname === "/") {
+                    e.preventDefault();
+
+                    const section = document.getElementById("topo");
+
+                    if (section) {
+                        section.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                        });
+                    } else {
+                        window.scrollTo({
+                            top: 0,
+                            behavior: "smooth",
+                        });
+                    }
+
+                    setCurrentHash("#topo");
+
+                    if (typeof window !== "undefined") {
+                        window.history.replaceState(null, "", "/#topo");
+                    }
+
+                    if (isMobileMenu) onClose();
+                    return;
+                }
+
+                if (item.href.startsWith("/#")) {
+                    const hash = item.href.replace("/", "");
+                    setCurrentHash(hash);
+                }
+
+                if (isMobileMenu) onClose();
+            };
 
             return (
                 <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => {
-                        if (isMobileMenu) onClose();
-                    }}
+                    onClick={handleClick}
                     className={className}
                 >
                     {content}

@@ -5,7 +5,9 @@ import { requireAdmin } from "@/lib/require-admin";
 
 const topicSchema = z
   .object({
-    telegraphPath: z.string().min(1, "telegraphPath é obrigatório"),
+    telegraphPath: z
+      .union([z.string(), z.literal(""), z.null()])
+      .optional(),
     category: z.string().min(2, "category é obrigatória"),
     displayOrder: z.coerce.number().int().min(1, "displayOrder deve ser no mínimo 1"),
     youtubeUrl: z
@@ -15,11 +17,15 @@ const topicSchema = z
   })
   .superRefine((data, ctx) => {
     const normalizedCategory = data.category.trim().toUpperCase();
-    const normalizedYoutubeUrl =
-      typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : data.youtubeUrl;
 
-    const hasYoutubeUrl =
-      typeof normalizedYoutubeUrl === "string" && normalizedYoutubeUrl.length > 0;
+    const normalizedTelegraphPath =
+      typeof data.telegraphPath === "string" ? data.telegraphPath.trim() : "";
+
+    const normalizedYoutubeUrl =
+      typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : "";
+
+    const hasTelegraphPath = normalizedTelegraphPath.length > 0;
+    const hasYoutubeUrl = normalizedYoutubeUrl.length > 0;
 
     if (normalizedCategory === "VIDEOS" && !hasYoutubeUrl) {
       ctx.addIssue({
@@ -29,11 +35,11 @@ const topicSchema = z
       });
     }
 
-    if (normalizedCategory !== "VIDEOS" && hasYoutubeUrl) {
+    if (normalizedCategory !== "VIDEOS" && !hasTelegraphPath) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["youtubeUrl"],
-        message: "youtubeUrl só pode ser informada quando a categoria for VIDEOS",
+        path: ["telegraphPath"],
+        message: "telegraphPath é obrigatório quando a categoria não for VIDEOS",
       });
     }
   });
@@ -119,10 +125,7 @@ export async function GET() {
     include: {
       display: true,
     },
-    orderBy: [
-      { category: "asc" },
-      { updatedAt: "desc" },
-    ],
+    orderBy: [{ category: "asc" }, { updatedAt: "desc" }],
   });
 
   return NextResponse.json(topics);
@@ -137,24 +140,32 @@ export async function POST(req: Request) {
     const data = topicSchema.parse(body);
 
     const normalizedCategory = data.category.trim().toUpperCase();
-    const normalizedTelegraphPath = normalizeTelegraphPath(data.telegraphPath);
+
+    const rawTelegraphPath =
+      typeof data.telegraphPath === "string" ? data.telegraphPath.trim() : "";
+
     const normalizedYoutubeUrl =
       typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : null;
+
+    const normalizedTelegraphPath =
+      rawTelegraphPath.length > 0 ? normalizeTelegraphPath(rawTelegraphPath) : null;
 
     const youtubeUrlToSave =
       normalizedCategory === "VIDEOS" && normalizedYoutubeUrl
         ? normalizedYoutubeUrl
         : null;
 
-    const existingTopic = await prisma.topic.findUnique({
-      where: { telegraphPath: normalizedTelegraphPath },
-    });
+    if (normalizedTelegraphPath) {
+      const existingTopic = await prisma.topic.findUnique({
+        where: { telegraphPath: normalizedTelegraphPath },
+      });
 
-    if (existingTopic) {
-      return NextResponse.json(
-        { error: "Já existe um tópico com esse telegraphPath." },
-        { status: 409 }
-      );
+      if (existingTopic) {
+        return NextResponse.json(
+          { error: "Já existe um tópico com esse telegraphPath." },
+          { status: 409 }
+        );
+      }
     }
 
     const conflictingDisplay = await prisma.topicDisplay.findFirst({
@@ -173,7 +184,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const telegraphTitle = await getTelegraphTitle(normalizedTelegraphPath);
+    const telegraphTitle =
+      normalizedTelegraphPath ? await getTelegraphTitle(normalizedTelegraphPath) : null;
 
     const topic = await prisma.$transaction(async (tx) => {
       const createdTopic = await tx.topic.create({
@@ -225,10 +237,7 @@ export async function POST(req: Request) {
         error.message === "Path do Telegraph não informado." ||
         error.message === "telegraphPath é obrigatório."
       ) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 400 });
       }
     }
 
@@ -244,9 +253,6 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Erro ao criar tópico." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Erro ao criar tópico." }, { status: 400 });
   }
 }

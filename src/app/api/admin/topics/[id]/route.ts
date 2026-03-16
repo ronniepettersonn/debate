@@ -5,7 +5,9 @@ import { requireAdmin } from "@/lib/require-admin";
 
 const updateSchema = z
   .object({
-    telegraphPath: z.string().min(1, "telegraphPath é obrigatório"),
+    telegraphPath: z
+      .union([z.string(), z.literal(""), z.null()])
+      .optional(),
     category: z.string().min(2, "category é obrigatória"),
     displayOrder: z.coerce.number().int().min(1, "displayOrder deve ser no mínimo 1"),
     youtubeUrl: z
@@ -15,11 +17,15 @@ const updateSchema = z
   })
   .superRefine((data, ctx) => {
     const normalizedCategory = data.category.trim().toUpperCase();
-    const normalizedYoutubeUrl =
-      typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : data.youtubeUrl;
 
-    const hasYoutubeUrl =
-      typeof normalizedYoutubeUrl === "string" && normalizedYoutubeUrl.length > 0;
+    const normalizedTelegraphPath =
+      typeof data.telegraphPath === "string" ? data.telegraphPath.trim() : "";
+
+    const normalizedYoutubeUrl =
+      typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : "";
+
+    const hasTelegraphPath = normalizedTelegraphPath.length > 0;
+    const hasYoutubeUrl = normalizedYoutubeUrl.length > 0;
 
     if (normalizedCategory === "VIDEOS" && !hasYoutubeUrl) {
       ctx.addIssue({
@@ -29,11 +35,11 @@ const updateSchema = z
       });
     }
 
-    if (normalizedCategory !== "VIDEOS" && hasYoutubeUrl) {
+    if (normalizedCategory !== "VIDEOS" && !hasTelegraphPath) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["youtubeUrl"],
-        message: "youtubeUrl só pode ser informada quando a categoria for VIDEOS",
+        path: ["telegraphPath"],
+        message: "telegraphPath é obrigatório quando a categoria não for VIDEOS",
       });
     }
   });
@@ -56,7 +62,11 @@ function normalizeTelegraphPath(input: string) {
     throw new Error("telegraphPath é obrigatório.");
   }
 
-  if (!value.includes("://") && !value.startsWith("telegra.ph/") && !value.startsWith("www.telegra.ph/")) {
+  if (
+    !value.includes("://") &&
+    !value.startsWith("telegra.ph/") &&
+    !value.startsWith("www.telegra.ph/")
+  ) {
     const cleanedPath = value.replace(/^\/+/, "").trim();
 
     if (!cleanedPath) {
@@ -67,9 +77,10 @@ function normalizeTelegraphPath(input: string) {
   }
 
   try {
-    const url = value.startsWith("http://") || value.startsWith("https://")
-      ? new URL(value)
-      : new URL(`https://${value}`);
+    const url =
+      value.startsWith("http://") || value.startsWith("https://")
+        ? new URL(value)
+        : new URL(`https://${value}`);
 
     if (!["telegra.ph", "www.telegra.ph"].includes(url.hostname)) {
       throw new Error("URL inválida do Telegraph.");
@@ -163,7 +174,13 @@ export async function PUT(
     }
 
     const normalizedCategory = data.category.trim().toUpperCase();
-    const normalizedTelegraphPath = normalizeTelegraphPath(data.telegraphPath);
+
+    const rawTelegraphPath =
+      typeof data.telegraphPath === "string" ? data.telegraphPath.trim() : "";
+
+    const normalizedTelegraphPath =
+      rawTelegraphPath.length > 0 ? normalizeTelegraphPath(rawTelegraphPath) : null;
+
     const normalizedYoutubeUrl =
       typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : null;
 
@@ -172,15 +189,17 @@ export async function PUT(
         ? normalizedYoutubeUrl
         : null;
 
-    const existingTopicWithSamePath = await prisma.topic.findUnique({
-      where: { telegraphPath: normalizedTelegraphPath },
-    });
+    if (normalizedTelegraphPath) {
+      const existingTopicWithSamePath = await prisma.topic.findUnique({
+        where: { telegraphPath: normalizedTelegraphPath },
+      });
 
-    if (existingTopicWithSamePath && existingTopicWithSamePath.id !== id) {
-      return NextResponse.json(
-        { error: "Já existe outro tópico com esse telegraphPath." },
-        { status: 409 }
-      );
+      if (existingTopicWithSamePath && existingTopicWithSamePath.id !== id) {
+        return NextResponse.json(
+          { error: "Já existe outro tópico com esse telegraphPath." },
+          { status: 409 }
+        );
+      }
     }
 
     const conflictingDisplay = await prisma.topicDisplay.findFirst({
@@ -202,7 +221,9 @@ export async function PUT(
       );
     }
 
-    const telegraphTitle = await getTelegraphTitle(normalizedTelegraphPath);
+    const telegraphTitle = normalizedTelegraphPath
+      ? await getTelegraphTitle(normalizedTelegraphPath)
+      : null;
 
     const topic = await prisma.$transaction(async (tx) => {
       await tx.topic.update({

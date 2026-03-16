@@ -10,7 +10,7 @@ type TgTitleResponse = {
 
 type TopicWithDisplay = {
   id: string;
-  telegraphPath: string;
+  telegraphPath: string | null;
   category: string;
   youtubeUrl: string | null;
   updatedAt: Date;
@@ -20,6 +20,10 @@ type TopicWithDisplay = {
     category: string;
     displayOrder: number;
   } | null;
+};
+
+type TopicWithTitle = TopicWithDisplay & {
+  title: string;
 };
 
 async function getTelegraphTitle(path: string) {
@@ -60,6 +64,14 @@ function sortByDisplayOrder<T extends { display: { displayOrder: number } | null
   });
 }
 
+function getFallbackTitle(topic: TopicWithDisplay) {
+  if (topic.category === "VIDEOS") {
+    return "Vídeo sem título";
+  }
+
+  return "Título indisponível";
+}
+
 export default async function Home() {
   const topics = await prisma.topic.findMany({
     select: {
@@ -79,9 +91,11 @@ export default async function Home() {
     },
   });
 
-  const topicsWithTitle = await Promise.all(
+  const topicsWithTitle: TopicWithTitle[] = await Promise.all(
     topics.map(async (topic) => {
-      const title = await getTelegraphTitle(topic.telegraphPath);
+      const title = topic.telegraphPath
+        ? await getTelegraphTitle(topic.telegraphPath)
+        : getFallbackTitle(topic);
 
       return {
         ...topic,
@@ -149,7 +163,7 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {articles.length > 0 ? (
               articles.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                <Link key={t.id} href={`/artigos/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
@@ -167,8 +181,6 @@ export default async function Home() {
           </div>
         </section>
 
-
-
         <section
           id="interpretacoes-gnosticas"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
@@ -180,7 +192,7 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {interpretacoesGnosticas.length > 0 ? (
               interpretacoesGnosticas.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                <Link key={t.id} href={`/interpretacoes-gnosticas/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
@@ -198,8 +210,6 @@ export default async function Home() {
           </div>
         </section>
 
-
-
         <section
           id="patristica"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
@@ -209,7 +219,7 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {patristica.length > 0 ? (
               patristica.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                <Link key={t.id} href={`/patristica/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
@@ -271,7 +281,7 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {sugestoesDeLeitura.length > 0 ? (
               sugestoesDeLeitura.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                <Link key={t.id} href={`/sugestoes-de-leitura/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
@@ -298,7 +308,7 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {glossario.length > 0 ? (
               glossario.map((t) => (
-                <Link key={t.id} href={`/topicos/${t.id}`} className="rounded-2xl">
+                <Link key={t.id} href={`/glossario/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
