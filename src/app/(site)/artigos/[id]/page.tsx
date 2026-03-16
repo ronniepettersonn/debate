@@ -78,9 +78,11 @@ export default async function TopicPage({
 }) {
     const { id } = await params;
 
-    const topic = await prisma.topic.findUnique({
+    const topic = (await prisma.topic.findUnique({
         where: { id },
-    });
+    })) ?? (await prisma.topic.findUnique({
+        where: { telegraphPath: id },
+    }))
 
     if (!topic) return notFound();
 

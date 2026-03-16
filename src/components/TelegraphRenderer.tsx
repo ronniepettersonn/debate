@@ -64,7 +64,7 @@ export function renderTelegraphNode(
             return (
                 <a
                     key={key}
-                    href={href}
+                    href={external ? href : '/artigos' + href}
                     target={external ? "_blank" : undefined}
                     rel={external ? "noreferrer noopener" : undefined}
                     className="text-gold hover:underline"
