@@ -10,6 +10,7 @@ import {
     FaHeadSideVirus,
     FaHome,
     FaNewspaper,
+    FaVideo,
 } from "react-icons/fa";
 import { FaBookOpenReader } from "react-icons/fa6";
 
@@ -22,6 +23,7 @@ const MENU_ITEMS = [
         icon: <FaHeadSideVirus />,
     },
     { href: "/#patristica", label: "Patrística", icon: <FaChurch /> },
+    { href: "/#videos", label: "Vídeos", icon: <FaVideo /> },
     {
         href: "/#sugestoes-de-leitura",
         label: "Leituras",

@@ -3,13 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 
+import { createAuditLog } from "@/lib/audit-log";
+
 const updateSchema = z
   .object({
-    telegraphPath: z
-      .union([z.string(), z.literal(""), z.null()])
-      .optional(),
+    telegraphPath: z.union([z.string(), z.literal(""), z.null()]).optional(),
     category: z.string().min(2, "category é obrigatória"),
-    displayOrder: z.coerce.number().int().min(1, "displayOrder deve ser no mínimo 1"),
+    displayOrder: z.coerce
+      .number()
+      .int()
+      .min(1, "displayOrder deve ser no mínimo 1"),
     youtubeUrl: z
       .union([z.string().url("youtubeUrl inválida"), z.literal(""), z.null()])
       .optional(),
@@ -39,7 +42,8 @@ const updateSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["telegraphPath"],
-        message: "telegraphPath é obrigatório quando a categoria não for VIDEOS",
+        message:
+          "telegraphPath é obrigatório quando a categoria não for VIDEOS",
       });
     }
   });
@@ -100,7 +104,7 @@ function normalizeTelegraphPath(input: string) {
 
 async function getTelegraphTitle(path: string) {
   const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
-    path
+    path,
   )}?return_content=false`;
 
   const res = await fetch(url, {
@@ -123,7 +127,7 @@ async function getTelegraphTitle(path: string) {
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
@@ -140,7 +144,7 @@ export async function GET(
   if (!topic) {
     return NextResponse.json(
       { error: "Tópico não encontrado." },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -149,7 +153,7 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
@@ -169,7 +173,7 @@ export async function PUT(
     if (!currentTopic) {
       return NextResponse.json(
         { error: "Tópico não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -179,7 +183,9 @@ export async function PUT(
       typeof data.telegraphPath === "string" ? data.telegraphPath.trim() : "";
 
     const normalizedTelegraphPath =
-      rawTelegraphPath.length > 0 ? normalizeTelegraphPath(rawTelegraphPath) : null;
+      rawTelegraphPath.length > 0
+        ? normalizeTelegraphPath(rawTelegraphPath)
+        : null;
 
     const normalizedYoutubeUrl =
       typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : null;
@@ -197,7 +203,7 @@ export async function PUT(
       if (existingTopicWithSamePath && existingTopicWithSamePath.id !== id) {
         return NextResponse.json(
           { error: "Já existe outro tópico com esse telegraphPath." },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -217,7 +223,7 @@ export async function PUT(
         {
           error: `Já existe um tópico na categoria ${normalizedCategory} com a ordem ${data.displayOrder}.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -226,7 +232,9 @@ export async function PUT(
       : null;
 
     const topic = await prisma.$transaction(async (tx) => {
-      await tx.topic.update({
+      const oldDisplay = currentTopic.display;
+
+      const updatedTopicBase = await tx.topic.update({
         where: { id },
         data: {
           telegraphPath: normalizedTelegraphPath,
@@ -237,7 +245,7 @@ export async function PUT(
         },
       });
 
-      await tx.topicDisplay.upsert({
+      const upsertedDisplay = await tx.topicDisplay.upsert({
         where: {
           topicId: id,
         },
@@ -252,12 +260,34 @@ export async function PUT(
         },
       });
 
-      return tx.topic.findUnique({
+      const fullUpdatedTopic = await tx.topic.findUnique({
         where: { id },
         include: {
           display: true,
         },
       });
+
+      await createAuditLog(tx, {
+        action: "UPDATE",
+        entity: "Topic",
+        entityId: id,
+        description: `Tópico atualizado`,
+        oldData: currentTopic,
+        newData: fullUpdatedTopic,
+      });
+
+      await createAuditLog(tx, {
+        action: oldDisplay ? "UPDATE" : "CREATE",
+        entity: "TopicDisplay",
+        entityId: upsertedDisplay.id,
+        description: oldDisplay
+          ? `Display do tópico atualizado`
+          : `Display do tópico criado`,
+        oldData: oldDisplay,
+        newData: upsertedDisplay,
+      });
+
+      return fullUpdatedTopic;
     });
 
     return NextResponse.json(topic);
@@ -270,23 +300,21 @@ export async function PUT(
           error: "Dados inválidos.",
           issues: error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (error instanceof Error) {
       if (
         error.message === "Falha ao buscar dados no Telegraph." ||
-        error.message === "Não foi possível obter o título da página no Telegraph." ||
+        error.message ===
+          "Não foi possível obter o título da página no Telegraph." ||
         error.message === "Informe um path ou URL válida do Telegraph." ||
         error.message === "URL inválida do Telegraph." ||
         error.message === "Path do Telegraph não informado." ||
         error.message === "telegraphPath é obrigatório."
       ) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 400 });
       }
     }
 
@@ -298,20 +326,20 @@ export async function PUT(
     ) {
       return NextResponse.json(
         { error: "Já existe um registro com esses dados únicos." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     return NextResponse.json(
       { error: "Erro ao atualizar tópico." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
 
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
@@ -331,14 +359,14 @@ export async function PATCH(
     if (!currentTopic) {
       return NextResponse.json(
         { error: "Tópico não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (!currentTopic.display) {
       return NextResponse.json(
         { error: "Esse tópico ainda não possui ordem cadastrada." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -348,9 +376,7 @@ export async function PATCH(
       where: {
         category,
         displayOrder:
-          direction === "up"
-            ? { lt: displayOrder }
-            : { gt: displayOrder },
+          direction === "up" ? { lt: displayOrder } : { gt: displayOrder },
       },
       orderBy: {
         displayOrder: direction === "up" ? "desc" : "asc",
@@ -365,9 +391,15 @@ export async function PATCH(
               ? "Este tópico já está no topo da categoria."
               : "Este tópico já está na última posição da categoria.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
+
+    const oldState = {
+      topicId: currentTopic.id,
+      category: currentTopic.display.category,
+      displayOrder: currentTopic.display.displayOrder,
+    };
 
     await prisma.$transaction(async (tx) => {
       await tx.topicDisplay.update({
@@ -383,6 +415,19 @@ export async function PATCH(
       await tx.topicDisplay.update({
         where: { topicId: id },
         data: { displayOrder: neighbor.displayOrder },
+      });
+
+      const updatedDisplay = await tx.topicDisplay.findUnique({
+        where: { topicId: id },
+      });
+
+      await createAuditLog(tx, {
+        action: "REORDER",
+        entity: "TopicDisplay",
+        entityId: currentTopic.display?.id ?? null,
+        description: `Tópico movido ${direction} na categoria ${category}`,
+        oldData: oldState,
+        newData: updatedDisplay,
       });
     });
 
@@ -403,20 +448,20 @@ export async function PATCH(
           error: "Dados inválidos.",
           issues: error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Erro ao reordenar tópico." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
@@ -434,14 +479,25 @@ export async function DELETE(
     if (!currentTopic) {
       return NextResponse.json(
         { error: "Tópico não encontrado." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     await prisma.$transaction(async (tx) => {
+      const oldDisplay = currentTopic.display;
+
       if (currentTopic.display) {
         await tx.topicDisplay.delete({
           where: { topicId: id },
+        });
+
+        await createAuditLog(tx, {
+          action: "DELETE",
+          entity: "TopicDisplay",
+          entityId: oldDisplay?.id ?? null,
+          description: `Display removido do tópico ${id}`,
+          oldData: oldDisplay,
+          newData: null,
         });
 
         await tx.topicDisplay.updateMany({
@@ -462,6 +518,15 @@ export async function DELETE(
       await tx.topic.delete({
         where: { id },
       });
+
+      await createAuditLog(tx, {
+        action: "DELETE",
+        entity: "Topic",
+        entityId: id,
+        description: `Tópico removido`,
+        oldData: currentTopic,
+        newData: null,
+      });
     });
 
     return NextResponse.json({ ok: true });
@@ -469,7 +534,7 @@ export async function DELETE(
     console.error(error);
     return NextResponse.json(
       { error: "Erro ao excluir tópico." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

@@ -3,13 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
 
+import { createAuditLog } from "@/lib/audit-log";
+
 const topicSchema = z
   .object({
-    telegraphPath: z
-      .union([z.string(), z.literal(""), z.null()])
-      .optional(),
+    telegraphPath: z.union([z.string(), z.literal(""), z.null()]).optional(),
     category: z.string().min(2, "category é obrigatória"),
-    displayOrder: z.coerce.number().int().min(1, "displayOrder deve ser no mínimo 1"),
+    displayOrder: z.coerce
+      .number()
+      .int()
+      .min(1, "displayOrder deve ser no mínimo 1"),
     youtubeUrl: z
       .union([z.string().url("youtubeUrl inválida"), z.literal(""), z.null()])
       .optional(),
@@ -39,7 +42,8 @@ const topicSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["telegraphPath"],
-        message: "telegraphPath é obrigatório quando a categoria não for VIDEOS",
+        message:
+          "telegraphPath é obrigatório quando a categoria não for VIDEOS",
       });
     }
   });
@@ -96,7 +100,7 @@ function normalizeTelegraphPath(input: string) {
 
 async function getTelegraphTitle(path: string) {
   const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
-    path
+    path,
   )}?return_content=false`;
 
   const res = await fetch(url, {
@@ -148,7 +152,9 @@ export async function POST(req: Request) {
       typeof data.youtubeUrl === "string" ? data.youtubeUrl.trim() : null;
 
     const normalizedTelegraphPath =
-      rawTelegraphPath.length > 0 ? normalizeTelegraphPath(rawTelegraphPath) : null;
+      rawTelegraphPath.length > 0
+        ? normalizeTelegraphPath(rawTelegraphPath)
+        : null;
 
     const youtubeUrlToSave =
       normalizedCategory === "VIDEOS" && normalizedYoutubeUrl
@@ -163,7 +169,7 @@ export async function POST(req: Request) {
       if (existingTopic) {
         return NextResponse.json(
           { error: "Já existe um tópico com esse telegraphPath." },
-          { status: 409 }
+          { status: 409 },
         );
       }
     }
@@ -180,12 +186,13 @@ export async function POST(req: Request) {
         {
           error: `Já existe um tópico na categoria ${normalizedCategory} com a ordem ${data.displayOrder}.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const telegraphTitle =
-      normalizedTelegraphPath ? await getTelegraphTitle(normalizedTelegraphPath) : null;
+    const telegraphTitle = normalizedTelegraphPath
+      ? await getTelegraphTitle(normalizedTelegraphPath)
+      : null;
 
     const topic = await prisma.$transaction(async (tx) => {
       const createdTopic = await tx.topic.create({
@@ -198,7 +205,7 @@ export async function POST(req: Request) {
         },
       });
 
-      await tx.topicDisplay.create({
+      const createdDisplay = await tx.topicDisplay.create({
         data: {
           topicId: createdTopic.id,
           category: normalizedCategory,
@@ -206,12 +213,32 @@ export async function POST(req: Request) {
         },
       });
 
-      return tx.topic.findUnique({
+      const fullTopic = await tx.topic.findUnique({
         where: { id: createdTopic.id },
         include: {
           display: true,
         },
       });
+
+      await createAuditLog(tx, {
+        action: "CREATE",
+        entity: "Topic",
+        entityId: createdTopic.id,
+        description: `Tópico criado na categoria ${normalizedCategory}`,
+        oldData: null,
+        newData: fullTopic,
+      });
+
+      await createAuditLog(tx, {
+        action: "CREATE",
+        entity: "TopicDisplay",
+        entityId: createdDisplay.id,
+        description: `Ordem ${data.displayOrder} criada para o tópico ${createdTopic.id}`,
+        oldData: null,
+        newData: createdDisplay,
+      });
+
+      return fullTopic;
     });
 
     return NextResponse.json(topic, { status: 201 });
@@ -224,14 +251,15 @@ export async function POST(req: Request) {
           error: "Dados inválidos.",
           issues: error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (error instanceof Error) {
       if (
         error.message === "Falha ao buscar dados no Telegraph." ||
-        error.message === "Não foi possível obter o título da página no Telegraph." ||
+        error.message ===
+          "Não foi possível obter o título da página no Telegraph." ||
         error.message === "Informe um path ou URL válida do Telegraph." ||
         error.message === "URL inválida do Telegraph." ||
         error.message === "Path do Telegraph não informado." ||
@@ -249,10 +277,13 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         { error: "Já existe um registro com esses dados únicos." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    return NextResponse.json({ error: "Erro ao criar tópico." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Erro ao criar tópico." },
+      { status: 400 },
+    );
   }
 }

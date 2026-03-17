@@ -85,3 +85,18 @@ model TopicDisplay {
   @@unique([category, displayOrder])
   @@index([category, displayOrder])
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  entity      String
+  entityId    String?
+  description String?
+  oldData     Json?
+  newData     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
