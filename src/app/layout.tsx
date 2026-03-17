@@ -13,8 +13,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Debate",
-  description: "Referências do debate",
+  title: {
+    default: 'De onde nasceu o calvinismo | Natan Rufino',
+    template: '%s | Natan Rufino'
+  },
+  description: "Tudo que você precisa saber para entender como a filosofia predestinista penetrou na comunidade cristã.",
+
+  openGraph: {
+    title: "De onde nasceu o calvinismo | Natan Rufino",
+    description: "Tudo que você precisa saber para entender como a filosofia predestinista penetrou na comunidade cristã.",
+    url: "https://debate.natanrufino.com.br", // importante
+    siteName: "De onde nasceu o calvinismo | Natan Rufino",
+    images: [
+      {
+        url: "/og-image.jpg", // relativo ao /public
+        width: 1200,
+        height: 630,
+        alt: "De onde nasceu o calvinismo | Natan Rufino",
+      },
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "De onde nasceu o calvinismo | Natan Rufino",
+    description: "Tudo que você precisa saber para entender como a filosofia predestinista penetrou na comunidade cristã.",
+    images: ["/og-image.jpg"],
+  },
 };
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
+import { Metadata } from "next";
 
 type TgResponse = {
     ok: boolean;
@@ -12,6 +13,22 @@ type TgResponse = {
         content: any[];
     };
 };
+
+type Props = {
+    params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+    const { id } = await params;
+
+    const topic = await prisma.topic.findUnique({
+        where: { id },
+    });
+
+    return {
+        title: (topic?.title) ?? "Artigo",
+    };
+}
 
 async function getTelegraphPage(path: string) {
     const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
