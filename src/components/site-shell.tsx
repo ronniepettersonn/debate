@@ -43,7 +43,7 @@ export default function SiteShell({ children }: SiteShellProps) {
                 </div>
             </div>
 
-            <div className="mx-auto flex max-w-7xl gap-3 md:gap-4">
+            <div className="mx-auto flex max-w-7xl gap-3 ">
                 <SiteSidebar
                     mobileOpen={mobileOpen}
                     onClose={() => setMobileOpen(false)}

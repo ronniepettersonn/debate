@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import clsx from "clsx";
 import {
     FaBook,
@@ -37,9 +37,16 @@ type SiteSidebarProps = {
     onClose: () => void;
 };
 
-function getCurrentHash() {
+function getHashSnapshot() {
     if (typeof window === "undefined") return "";
     return window.location.hash || "";
+}
+
+function subscribeToHashChange(callback: () => void) {
+    if (typeof window === "undefined") return () => { };
+
+    window.addEventListener("hashchange", callback);
+    return () => window.removeEventListener("hashchange", callback);
 }
 
 function getActiveHref(pathname: string, currentHash: string) {
@@ -63,6 +70,10 @@ function getActiveHref(pathname: string, currentHash: string) {
         return "/#patristica";
     }
 
+    if (pathname.startsWith("/videos/")) {
+        return "/#videos";
+    }
+
     if (pathname.startsWith("/sugestoes-de-leitura/")) {
         return "/#sugestoes-de-leitura";
     }
@@ -79,23 +90,18 @@ export default function SiteSidebar({
     onClose,
 }: SiteSidebarProps) {
     const pathname = usePathname();
-    const [currentHash, setCurrentHash] = useState(() => getCurrentHash());
 
-    useEffect(() => {
-        const updateHash = () => {
-            setCurrentHash(getCurrentHash());
-        };
+    const currentHash = useSyncExternalStore(
+        subscribeToHashChange,
+        getHashSnapshot,
+        () => ""
+    );
 
-        window.addEventListener("hashchange", updateHash);
-
-        return () => {
-            window.removeEventListener("hashchange", updateHash);
-        };
-    }, []);
+    const normalizedHash = pathname === "/" ? currentHash : "";
 
     const activeHref = useMemo(() => {
-        return getActiveHref(pathname, currentHash);
-    }, [pathname, currentHash]);
+        return getActiveHref(pathname, normalizedHash);
+    }, [pathname, normalizedHash]);
 
     const renderItems = (isMobileMenu = false) =>
         MENU_ITEMS.map((item) => {
@@ -106,15 +112,6 @@ export default function SiteSidebar({
                 isActive
                     ? "border border-border bg-panel/70 text-gold"
                     : "border border-transparent text-text/90 hover:border-border hover:bg-panel/55"
-            );
-
-            const content = (
-                <>
-                    <span className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
-                        {item.icon}
-                    </span>
-                    <span className="truncate">{item.label}</span>
-                </>
             );
 
             const handleClick = (
@@ -137,19 +134,11 @@ export default function SiteSidebar({
                         });
                     }
 
-                    setCurrentHash("#topo");
-
-                    if (typeof window !== "undefined") {
-                        window.history.replaceState(null, "", "/#topo");
-                    }
+                    window.history.replaceState(null, "", "/#topo");
+                    window.dispatchEvent(new HashChangeEvent("hashchange"));
 
                     if (isMobileMenu) onClose();
                     return;
-                }
-
-                if (item.href.startsWith("/#")) {
-                    const hash = item.href.replace("/", "");
-                    setCurrentHash(hash);
                 }
 
                 if (isMobileMenu) onClose();
@@ -162,14 +151,17 @@ export default function SiteSidebar({
                     onClick={handleClick}
                     className={className}
                 >
-                    {content}
+                    <span className="grid h-5 w-5 shrink-0 place-items-center text-base leading-none">
+                        {item.icon}
+                    </span>
+                    <span className="truncate">{item.label}</span>
                 </Link>
             );
         });
 
     return (
         <>
-            <aside className="hidden md:block md:w-[18rem]">
+            <aside className="hidden md:block md:w-[18rem] pl-4">
                 <div className="sticky top-6 rounded-3xl border border-border bg-panel/45 p-3 backdrop-blur">
                     <div className="mb-3 rounded-2xl border border-border bg-panel/55 px-4 py-3">
                         <div className="text-xs tracking-[0.18em] text-muted/80">
@@ -180,12 +172,15 @@ export default function SiteSidebar({
 
                     <nav className="flex flex-col gap-2">{renderItems(false)}</nav>
 
-                    <div className="flex w-full justify-center items-center px-4 my-4">
+                    <div className="my-4 flex w-full items-center justify-center px-4">
                         <Link
-                            href={'https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5'}
-                            className="bg-gold w-full text-center rounded-2xl text-panel font-semibold py-2 hover:bg-gold/70 hover:cursor-pointer"
+                            href="https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5"
+                            className="w-full rounded-2xl bg-gold py-2 text-center font-semibold text-panel transition hover:cursor-pointer hover:bg-gold/70"
                             target="_blank"
-                        >COMPRAR LIVRO</Link>
+                            rel="noopener noreferrer"
+                        >
+                            COMPRAR LIVRO
+                        </Link>
                     </div>
                 </div>
             </aside>
@@ -214,12 +209,15 @@ export default function SiteSidebar({
 
                             <nav className="flex flex-col gap-2">{renderItems(true)}</nav>
 
-                            <div className="flex w-full justify-center items-center px-4 my-4">
+                            <div className="my-4 flex w-full items-center justify-center px-4">
                                 <Link
-                                    href={'https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5'}
-                                    className="bg-gold w-full text-center rounded-2xl text-panel font-semibold py-2 hover:bg-gold/70 hover:cursor-pointer"
+                                    href="https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5"
+                                    className="w-full rounded-2xl bg-gold py-2 text-center font-semibold text-panel transition hover:cursor-pointer hover:bg-gold/70"
                                     target="_blank"
-                                >COMPRAR LIVRO</Link>
+                                    rel="noopener noreferrer"
+                                >
+                                    COMPRAR LIVRO
+                                </Link>
                             </div>
 
                             <div className="mt-auto rounded-2xl border border-border bg-panel/40 p-3 text-xs text-muted">

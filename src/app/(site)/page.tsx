@@ -130,7 +130,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-bg bg-grid text-text">
-      <div className="mx-auto max-w-6xl px-2 py-3 md:px-2 md:py-3">
+      <div className="mx-auto max-w-6xl px-2 pb-3 pt-6 md:pr-4 md:pt-6">
         <section
           id="topo"
           className="rounded-3xl border border-border bg-panel/45 p-5 backdrop-blur md:p-8"
@@ -326,9 +326,13 @@ export default async function Home() {
           </div>
         </section>
 
-        <footer className="mt-8 border-t border-border pt-6 text-xs text-muted/70">
-          Dica: essa estrutura deixa o menu sempre acessível no mobile sem
-          esconder a navegação.
+        <footer className="mt-8 pb-4 border-t px-4 border-border pt-6 text-xs text-muted/70 flex gap-1 justify-center">
+          <div>
+            Todos os direitos reservador a <Link href={'https://natanrufino.com.br'} target="_blank">Natan Rufino</Link>.
+          </div>
+          <div>
+            Desenvolvido por <Link href={'https://ronniepettersonn.com.br'} target="_blank">Ronnie Pettersonn</Link>
+          </div>
         </footer>
       </div>
     </main>
