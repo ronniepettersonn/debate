@@ -179,6 +179,14 @@ export default function SiteSidebar({
                     </div>
 
                     <nav className="flex flex-col gap-2">{renderItems(false)}</nav>
+
+                    <div className="flex w-full justify-center items-center px-4 my-4">
+                        <Link
+                            href={'https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5'}
+                            className="bg-gold w-full text-center rounded-2xl text-panel font-semibold py-2 hover:bg-gold/70 hover:cursor-pointer"
+                            target="_blank"
+                        >COMPRAR LIVRO</Link>
+                    </div>
                 </div>
             </aside>
 
@@ -205,6 +213,14 @@ export default function SiteSidebar({
                             </button>
 
                             <nav className="flex flex-col gap-2">{renderItems(true)}</nav>
+
+                            <div className="flex w-full justify-center items-center px-4 my-4">
+                                <Link
+                                    href={'https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5'}
+                                    className="bg-gold w-full text-center rounded-2xl text-panel font-semibold py-2 hover:bg-gold/70 hover:cursor-pointer"
+                                    target="_blank"
+                                >COMPRAR LIVRO</Link>
+                            </div>
 
                             <div className="mt-auto rounded-2xl border border-border bg-panel/40 p-3 text-xs text-muted">
                                 Navegação rápida entre as seções e páginas.
