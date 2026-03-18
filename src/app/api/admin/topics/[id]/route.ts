@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma";
 import { requireAdmin } from "@/lib/require-admin";
-
 import { createAuditLog } from "@/lib/audit-log";
 
 const updateSchema = z
@@ -16,7 +16,6 @@ const updateSchema = z
     youtubeUrl: z
       .union([z.string().url("youtubeUrl inválida"), z.literal(""), z.null()])
       .optional(),
-    content: z.any().optional(),
   })
   .superRefine((data, ctx) => {
     const normalizedCategory = data.category.trim().toUpperCase();
@@ -52,10 +51,17 @@ const moveSchema = z.object({
   direction: z.enum(["up", "down"]),
 });
 
+type TelegraphNode = {
+  tag?: string;
+  attrs?: Record<string, string>;
+  children?: Array<TelegraphNode | string>;
+};
+
 type TelegraphResponse = {
   ok: boolean;
   result?: {
     title?: string;
+    content?: TelegraphNode[];
   };
 };
 
@@ -102,10 +108,42 @@ function normalizeTelegraphPath(input: string) {
   }
 }
 
-async function getTelegraphTitle(path: string) {
+function extractTextFromNode(node: TelegraphNode | string): string {
+  if (typeof node === "string") {
+    return node;
+  }
+
+  if (node.tag === "br") {
+    return "\n";
+  }
+
+  if (!node || !Array.isArray(node.children)) {
+    return "";
+  }
+
+  const text = node.children.map(extractTextFromNode).join(" ");
+
+  if (["p", "h3", "h4", "blockquote", "figcaption"].includes(node.tag ?? "")) {
+    return `${text}\n`;
+  }
+
+  return text;
+}
+
+function extractPlainText(content: TelegraphNode[]): string {
+  return content
+    .map(extractTextFromNode)
+    .join(" ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n\s+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function getTelegraphPage(path: string, returnContent = false) {
   const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
     path,
-  )}?return_content=false`;
+  )}?return_content=${returnContent ? "true" : "false"}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -122,7 +160,10 @@ async function getTelegraphTitle(path: string) {
     throw new Error("Não foi possível obter o título da página no Telegraph.");
   }
 
-  return data.result.title.trim();
+  return {
+    title: data.result.title.trim(),
+    content: Array.isArray(data.result.content) ? data.result.content : [],
+  };
 }
 
 export async function GET(
@@ -227,21 +268,29 @@ export async function PUT(
       );
     }
 
-    const telegraphTitle = normalizedTelegraphPath
-      ? await getTelegraphTitle(normalizedTelegraphPath)
-      : null;
+    let telegraphTitle: string | null = null;
+    let telegraphContent: TelegraphNode[] | typeof Prisma.JsonNull = Prisma.JsonNull;
+    let plainTextContent: string | null = null;
+
+    if (normalizedTelegraphPath) {
+      const page = await getTelegraphPage(normalizedTelegraphPath, true);
+      telegraphTitle = page.title;
+      telegraphContent = page.content;
+      plainTextContent = extractPlainText(page.content);
+    }
 
     const topic = await prisma.$transaction(async (tx) => {
       const oldDisplay = currentTopic.display;
 
-      const updatedTopicBase = await tx.topic.update({
+      await tx.topic.update({
         where: { id },
         data: {
           telegraphPath: normalizedTelegraphPath,
           title: telegraphTitle,
           category: normalizedCategory,
           youtubeUrl: youtubeUrlToSave,
-          content: data.content ?? undefined,
+          content: telegraphContent,
+          plainTextContent,
         },
       });
 
@@ -271,7 +320,7 @@ export async function PUT(
         action: "UPDATE",
         entity: "Topic",
         entityId: id,
-        description: `Tópico atualizado`,
+        description: "Tópico atualizado",
         oldData: currentTopic,
         newData: fullUpdatedTopic,
       });
@@ -281,8 +330,8 @@ export async function PUT(
         entity: "TopicDisplay",
         entityId: upsertedDisplay.id,
         description: oldDisplay
-          ? `Display do tópico atualizado`
-          : `Display do tópico criado`,
+          ? "Display do tópico atualizado"
+          : "Display do tópico criado",
         oldData: oldDisplay,
         newData: upsertedDisplay,
       });
@@ -523,7 +572,7 @@ export async function DELETE(
         action: "DELETE",
         entity: "Topic",
         entityId: id,
-        description: `Tópico removido`,
+        description: "Tópico removido",
         oldData: currentTopic,
         newData: null,
       });

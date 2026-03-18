@@ -3,6 +3,10 @@
     {
       "path": "/api/keepalive?secret=70070fe2b73c91bc617282f47c9e5e20fc114f5558be5d2ffcce4558fd2312d51f3s21df712213f",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/sync-telegraph",
+      "schedule": "0 * * * *"
     }
   ]
 }

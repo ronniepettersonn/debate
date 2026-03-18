@@ -1,15 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-
-type TgTitleResponse = {
-  ok: boolean;
-  result?: {
-    title: string;
-  };
-};
+import HomeSearch from "@/components/home-search";
 
 type TopicWithDisplay = {
   id: string;
+  title: string | null;
   telegraphPath: string | null;
   category: string;
   youtubeUrl: string | null;
@@ -21,37 +16,6 @@ type TopicWithDisplay = {
     displayOrder: number;
   } | null;
 };
-
-type TopicWithTitle = TopicWithDisplay & {
-  title: string;
-};
-
-async function getTelegraphTitle(path: string) {
-  const url = `https://api.telegra.ph/getPage/${encodeURIComponent(
-    path
-  )}?return_content=false`;
-
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) {
-      throw new Error("Falha ao buscar título no Telegraph");
-    }
-
-    const data: TgTitleResponse = await res.json();
-
-    if (!data.ok || !data.result) {
-      throw new Error("Resposta inválida do Telegraph");
-    }
-
-    return data.result.title;
-  } catch (error) {
-    console.error(`Erro ao buscar título do Telegraph para ${path}:`, error);
-    return "Título indisponível";
-  }
-}
 
 function sortByDisplayOrder<T extends { display: { displayOrder: number } | null }>(
   items: T[]
@@ -65,6 +29,10 @@ function sortByDisplayOrder<T extends { display: { displayOrder: number } | null
 }
 
 function getFallbackTitle(topic: TopicWithDisplay) {
+  if (topic.title?.trim()) {
+    return topic.title;
+  }
+
   if (topic.category === "VIDEOS") {
     return "Vídeo sem título";
   }
@@ -76,6 +44,7 @@ export default async function Home() {
   const topics = await prisma.topic.findMany({
     select: {
       id: true,
+      title: true,
       telegraphPath: true,
       category: true,
       youtubeUrl: true,
@@ -91,41 +60,28 @@ export default async function Home() {
     },
   });
 
-  const topicsWithTitle: TopicWithTitle[] = await Promise.all(
-    topics.map(async (topic) => {
-      const title = topic.telegraphPath
-        ? await getTelegraphTitle(topic.telegraphPath)
-        : getFallbackTitle(topic);
-
-      return {
-        ...topic,
-        title,
-      };
-    })
-  );
-
   const articles = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "ARTIGO")
+    topics.filter((t) => t.category === "ARTIGO")
   );
 
   const videos = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "VIDEOS" && t.youtubeUrl)
+    topics.filter((t) => t.category === "VIDEOS" && t.youtubeUrl)
   );
 
   const interpretacoesGnosticas = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "INTERPRETACOES_GNOSTICAS")
+    topics.filter((t) => t.category === "INTERPRETACOES_GNOSTICAS")
   );
 
   const patristica = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "PATRISTICA")
+    topics.filter((t) => t.category === "PATRISTICA")
   );
 
   const sugestoesDeLeitura = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "SUGESTOES_DE_LEITURA")
+    topics.filter((t) => t.category === "SUGESTOES_DE_LEITURA")
   );
 
   const glossario = sortByDisplayOrder(
-    topicsWithTitle.filter((t) => t.category === "GLOSSARIO")
+    topics.filter((t) => t.category === "GLOSSARIO")
   );
 
   return (
@@ -150,6 +106,8 @@ export default async function Home() {
           </div>
         </section>
 
+        <HomeSearch />
+
         <section
           id="artigos"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
@@ -167,7 +125,7 @@ export default async function Home() {
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -192,11 +150,15 @@ export default async function Home() {
           <div className="mt-6 grid gap-3">
             {interpretacoesGnosticas.length > 0 ? (
               interpretacoesGnosticas.map((t) => (
-                <Link key={t.id} href={`/interpretacoes-gnosticas/${t.id}`} className="rounded-2xl">
+                <Link
+                  key={t.id}
+                  href={`/interpretacoes-gnosticas/${t.id}`}
+                  className="rounded-2xl"
+                >
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -223,7 +185,7 @@ export default async function Home() {
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -256,7 +218,7 @@ export default async function Home() {
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -274,18 +236,22 @@ export default async function Home() {
           id="sugestoes-de-leitura"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
-          <h2 className=" text-2xl font-semibold text-gold">
+          <h2 className="text-2xl font-semibold text-gold">
             Sugestões de Leitura
           </h2>
 
           <div className="mt-6 grid gap-3">
             {sugestoesDeLeitura.length > 0 ? (
               sugestoesDeLeitura.map((t) => (
-                <Link key={t.id} href={`/sugestoes-de-leitura/${t.id}`} className="rounded-2xl">
+                <Link
+                  key={t.id}
+                  href={`/sugestoes-de-leitura/${t.id}`}
+                  className="rounded-2xl"
+                >
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -303,7 +269,7 @@ export default async function Home() {
           id="glossario"
           className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
         >
-          <h2 className=" text-2xl font-semibold text-gold">Glossário</h2>
+          <h2 className="text-2xl font-semibold text-gold">Glossário</h2>
 
           <div className="mt-6 grid gap-3">
             {glossario.length > 0 ? (
@@ -312,7 +278,7 @@ export default async function Home() {
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
-                        {t.title}
+                        {getFallbackTitle(t)}
                       </h3>
                     </li>
                   </ul>
@@ -326,12 +292,19 @@ export default async function Home() {
           </div>
         </section>
 
-        <footer className="mt-8 pb-4 border-t px-4 border-border pt-6 text-xs text-muted/70 flex gap-1 justify-center">
+        <footer className="mt-8 flex justify-center gap-1 border-t border-border px-4 pb-4 pt-6 text-xs text-muted/70">
           <div>
-            Todos os direitos reservador a <Link href={'https://natanrufino.com.br'} target="_blank">Natan Rufino</Link>.
+            Todos os direitos reservador a{" "}
+            <Link href="https://natanrufino.com.br" target="_blank">
+              Natan Rufino
+            </Link>
+            .
           </div>
           <div>
-            Desenvolvido por <Link href={'https://ronniepettersonn.com.br'} target="_blank">Ronnie Pettersonn</Link>
+            Desenvolvido por{" "}
+            <Link href="https://ronniepettersonn.com.br" target="_blank">
+              Ronnie Pettersonn
+            </Link>
           </div>
         </footer>
       </div>

@@ -62,14 +62,15 @@ model VerificationToken {
 }
 
 model Topic {
-  id            String   @id @default(cuid())
-  telegraphPath String?  @unique
-  title         String?
-  category      String
-  youtubeUrl    String?
-  content       Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  telegraphPath    String?  @unique
+  title            String?
+  category         String
+  youtubeUrl       String?
+  content          Json?
+  plainTextContent String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   display TopicDisplay?
 }
