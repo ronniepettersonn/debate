@@ -295,7 +295,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <footer className="mt-8 flex justify-center gap-1 border-t border-border px-4 pb-4 pt-6 text-xs text-muted/70">
+        <footer className="mt-8 flex flex-col md:flex-row justify-center gap-1 border-t border-border px-4 pb-4 pt-6 text-xs text-muted/70">
           <div>
             Todos os direitos reservador a{" "}
             <Link href="https://natanrufino.com.br" target="_blank">
