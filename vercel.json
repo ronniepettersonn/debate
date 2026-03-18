@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/sync-telegraph",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
