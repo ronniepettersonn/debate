@@ -2,7 +2,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import SearchHighlight from "@/components/search-highlight";
 
 type TgResponse = {
     ok: boolean;
@@ -16,17 +17,24 @@ type TgResponse = {
 
 type Props = {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ q?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
 
-    const topic = await prisma.topic.findUnique({
-        where: { id },
-    });
+    const topic =
+        (await prisma.topic.findUnique({
+            where: { id },
+            select: { title: true },
+        })) ??
+        (await prisma.topic.findUnique({
+            where: { telegraphPath: id },
+            select: { title: true },
+        }));
 
     return {
-        title: (topic?.title) ?? "Artigo",
+        title: topic?.title ?? "Artigo",
     };
 }
 
@@ -88,22 +96,25 @@ function parseManualContent(content: unknown): TgNode[] | null {
     return validNodes.length > 0 ? validNodes : null;
 }
 
-export default async function TopicPage({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}) {
+export default async function TopicPage({ params, searchParams }: Props) {
     const { id } = await params;
+    const { q = "" } = await searchParams;
 
-    const topic = await prisma.topic.findUnique({
-        where: { id },
-    });
+    const topic =
+        (await prisma.topic.findUnique({
+            where: { id },
+        })) ??
+        (await prisma.topic.findUnique({
+            where: { telegraphPath: id },
+        }));
 
     if (!topic) return notFound();
 
+    const savedContent = parseManualContent(topic.content);
     let tg: TgResponse["result"] | null = null;
 
-    if (topic.telegraphPath) {
+    // Busca no Telegraph só como fallback, caso o banco esteja vazio
+    if (!savedContent && topic.telegraphPath) {
         try {
             tg = await getTelegraphPage(topic.telegraphPath);
         } catch (error) {
@@ -111,37 +122,42 @@ export default async function TopicPage({
         }
     }
 
-    const manualContent = parseManualContent(topic.content);
-
-    const title = tg?.title ?? "Sem título";
-    const contentToRender = tg?.content ?? manualContent;
+    const title = topic.title?.trim() || tg?.title || "Sem título";
+    const contentToRender = savedContent ?? tg?.content ?? null;
 
     return (
-        <main className="min-h-screen bg-bg text-text">
-            <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-10">
-                <header className="mb-8 md:mb-10">
-                    <h1 className="my-4 text-3xl font-semibold leading-tight text-gold md:text-5xl">
-                        {title}
-                    </h1>
-                </header>
+        <>
+            <SearchHighlight query={q} containerId="article-content" />
 
-                <section className="min-w-0">
-                    {contentToRender ? (
-                        <article className="mx-auto w-full max-w-3xl">
-                            <TelegraphRenderer content={contentToRender} />
-                        </article>
-                    ) : (
-                        <div className="mx-auto max-w-3xl text-muted">
-                            Este tópico ainda não tem conteúdo disponível.
-                        </div>
-                    )}
-                </section>
+            <main className="min-h-screen bg-bg text-text">
+                <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-10">
+                    <header className="mb-8 md:mb-10">
+                        <h1 className="my-4 text-3xl font-semibold leading-tight text-gold md:text-5xl">
+                            {title}
+                        </h1>
+                    </header>
 
-                <footer className="mx-auto mt-12 max-w-3xl border-t border-border pt-6 text-xs text-muted/70">
-                    Atualizado em{" "}
-                    {new Date(topic.updatedAt).toLocaleDateString("pt-BR")}
-                </footer>
-            </div>
-        </main>
+                    <section className="min-w-0">
+                        {contentToRender ? (
+                            <article
+                                id="article-content"
+                                className="mx-auto w-full max-w-3xl"
+                            >
+                                <TelegraphRenderer content={contentToRender} />
+                            </article>
+                        ) : (
+                            <div className="mx-auto max-w-3xl text-muted">
+                                Este tópico ainda não tem conteúdo disponível.
+                            </div>
+                        )}
+                    </section>
+
+                    <footer className="mx-auto mt-12 max-w-3xl border-t border-border pt-6 text-xs text-muted/70">
+                        Atualizado em{" "}
+                        {new Date(topic.updatedAt).toLocaleDateString("pt-BR")}
+                    </footer>
+                </div>
+            </main>
+        </>
     );
 }
