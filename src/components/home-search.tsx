@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+type SearchOccurrence = {
+    occurrenceIndex: number;
+    excerpt: string;
+    fragmentId: string;
+    start: number;
+    end: number;
+    matchText: string;
+};
+
 type SearchResult = {
     id: string;
     title: string | null;
@@ -12,6 +21,8 @@ type SearchResult = {
     updatedAt: string;
     displayOrder: number | null;
     excerpt: string;
+    occurrences: SearchOccurrence[];
+    occurrencesCount: number;
 };
 
 type SearchResponse = {
@@ -39,23 +50,32 @@ function normalizeCategoryLabel(category: string) {
     }
 }
 
-function getTopicHref(result: SearchResult, query: string) {
-    const encodedQuery = encodeURIComponent(query);
-
+function getTopicBaseHref(result: SearchResult) {
     switch (result.category) {
         case "ARTIGO":
-            return `/artigos/${result.id}?q=${encodedQuery}`;
+            return `/artigos/${result.id}`;
         case "INTERPRETACOES_GNOSTICAS":
-            return `/interpretacoes-gnosticas/${result.id}?q=${encodedQuery}`;
+            return `/interpretacoes-gnosticas/${result.id}`;
         case "PATRISTICA":
-            return `/patristica/${result.id}?q=${encodedQuery}`;
+            return `/patristica/${result.id}`;
         case "SUGESTOES_DE_LEITURA":
-            return `/sugestoes-de-leitura/${result.id}?q=${encodedQuery}`;
+            return `/sugestoes-de-leitura/${result.id}`;
         case "GLOSSARIO":
-            return `/glossario/${result.id}?q=${encodedQuery}`;
+            return `/glossario/${result.id}`;
         default:
             return "#";
     }
+}
+
+function getTopicHref(result: SearchResult, query: string, fragmentId?: string) {
+    const encodedQuery = encodeURIComponent(query);
+    const baseHref = getTopicBaseHref(result);
+
+    if (baseHref === "#") return "#";
+
+    return fragmentId
+        ? `${baseHref}?q=${encodedQuery}#${fragmentId}`
+        : `${baseHref}?q=${encodedQuery}`;
 }
 
 export default function HomeSearch() {
@@ -139,20 +159,22 @@ export default function HomeSearch() {
 
     const totalLabel = useMemo(() => {
         if (!debouncedQuery) return "";
-        return `${results.length} resultado(s) encontrado(s)`;
-    }, [debouncedQuery, results.length]);
+
+        const totalOccurrences = results.reduce((acc, result) => {
+            if (result.category === "VIDEOS") return acc + 1;
+            return acc + Math.max(result.occurrencesCount || 0, result.excerpt ? 1 : 0);
+        }, 0);
+
+        return `${results.length} artigo(s)/resultado(s) e ${totalOccurrences} ocorrência(s) encontrada(s)`;
+    }, [debouncedQuery, results]);
 
     return (
         <section className="mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8">
             <div className="flex flex-col gap-4">
                 <div>
-                    {/* <p className="text-xs tracking-[0.18em] text-muted/80">BUSCA</p> */}
-                    <h2 className=" text-2xl font-semibold text-gold">
+                    <h2 className="text-2xl font-semibold text-gold">
                         Pesquisar no conteúdo
                     </h2>
-                    {/* <p className="mt-2 text-sm text-muted">
-                        Pesquise por título, categoria ou palavras presentes nos textos.
-                    </p> */}
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -189,6 +211,22 @@ export default function HomeSearch() {
                                         ? "Vídeo sem título"
                                         : "Título indisponível");
 
+                                const occurrences =
+                                    result.occurrences && result.occurrences.length > 0
+                                        ? result.occurrences
+                                        : result.excerpt
+                                            ? [
+                                                {
+                                                    occurrenceIndex: 1,
+                                                    excerpt: result.excerpt,
+                                                    fragmentId: "",
+                                                    start: 0,
+                                                    end: 0,
+                                                    matchText: "",
+                                                },
+                                            ]
+                                            : [];
+
                                 if (result.category === "VIDEOS") {
                                     return (
                                         <a
@@ -218,9 +256,8 @@ export default function HomeSearch() {
                                 }
 
                                 return (
-                                    <Link
+                                    <div
                                         key={result.id}
-                                        href={getTopicHref(result, debouncedQuery)}
                                         className="rounded-2xl border border-border bg-panel/45 p-4 transition hover:bg-panel/65"
                                     >
                                         <div className="flex flex-col gap-2">
@@ -228,17 +265,52 @@ export default function HomeSearch() {
                                                 {normalizeCategoryLabel(result.category)}
                                             </div>
 
-                                            <h3 className="text-base font-medium text-text">
-                                                {highlightText(title, debouncedQuery)}
-                                            </h3>
+                                            <Link
+                                                href={getTopicHref(result, debouncedQuery)}
+                                                className="block"
+                                            >
+                                                <h3 className="text-base font-medium text-text">
+                                                    {highlightText(title, debouncedQuery)}
+                                                </h3>
+                                            </Link>
 
                                             {result.excerpt ? (
-                                                <p className="text-sm leading-6 text-muted">
-                                                    {highlightText(result.excerpt, debouncedQuery)}
-                                                </p>
+                                                <Link
+                                                    href={getTopicHref(result, debouncedQuery)}
+                                                    className="block"
+                                                >
+                                                    <p className="text-sm leading-6 text-muted">
+                                                        {highlightText(result.excerpt, debouncedQuery)}
+                                                    </p>
+                                                </Link>
                                             ) : null}
+
+                                            {occurrences.length > 1 && (
+                                                <div className="mt-2 flex flex-col gap-2 border-t border-border/60 pt-3">
+                                                    <div className="text-xs uppercase tracking-[0.14em] text-muted/70">
+                                                        Ocorrências no artigo
+                                                    </div>
+
+                                                    {occurrences.map((occurrence) => (
+                                                        <Link
+                                                            key={`${result.id}-${occurrence.fragmentId || occurrence.occurrenceIndex}`}
+                                                            href={getTopicHref(
+                                                                result,
+                                                                debouncedQuery,
+                                                                occurrence.fragmentId || undefined
+                                                            )}
+                                                            className="rounded-xl border border-border/60 bg-panel/30 p-3 text-sm leading-6 text-muted transition hover:bg-panel/50"
+                                                        >
+                                                            {highlightText(
+                                                                occurrence.excerpt,
+                                                                debouncedQuery
+                                                            )}
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    </Link>
+                                    </div>
                                 );
                             })}
                         </div>

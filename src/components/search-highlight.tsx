@@ -2,16 +2,25 @@
 
 import { useEffect } from "react";
 
-type SearchHighlightProps = {
+type Props = {
     query: string;
-    containerId?: string;
+    containerId: string;
 };
 
 function escapeRegExp(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function clearHighlights(container: HTMLElement) {
+function slugify(value: string) {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+}
+
+function unwrapPreviousHighlights(container: HTMLElement) {
     const marks = container.querySelectorAll("mark[data-search-highlight='true']");
 
     marks.forEach((mark) => {
@@ -23,48 +32,30 @@ function clearHighlights(container: HTMLElement) {
     });
 }
 
-function highlightInTextNode(node: Text, query: string) {
-    const text = node.nodeValue;
-    if (!text) return false;
+function getTextNodes(root: Node): Text[] {
+    const textNodes: Text[] = [];
 
-    const regex = new RegExp(escapeRegExp(query), "i");
-    const match = text.match(regex);
-
-    if (!match || match.index == null) return false;
-
-    const start = match.index;
-    const end = start + match[0].length;
-
-    const range = document.createRange();
-    range.setStart(node, start);
-    range.setEnd(node, end);
-
-    const mark = document.createElement("mark");
-    mark.setAttribute("data-search-highlight", "true");
-    mark.className = "rounded bg-gold/25 px-1 text-gold";
-
-    range.surroundContents(mark);
-
-    return true;
-}
-
-function highlightAll(container: HTMLElement, query: string) {
     const walker = document.createTreeWalker(
-        container,
+        root,
         NodeFilter.SHOW_TEXT,
         {
             acceptNode(node) {
                 const parent = node.parentElement;
 
                 if (!parent) return NodeFilter.FILTER_REJECT;
+
+                const tag = parent.tagName.toLowerCase();
+
                 if (
-                    ["SCRIPT", "STYLE", "MARK"].includes(parent.tagName) ||
-                    parent.closest("mark[data-search-highlight='true']")
+                    tag === "script" ||
+                    tag === "style" ||
+                    tag === "noscript" ||
+                    tag === "mark"
                 ) {
                     return NodeFilter.FILTER_REJECT;
                 }
 
-                if (!node.nodeValue?.trim()) {
+                if (!node.textContent?.trim()) {
                     return NodeFilter.FILTER_REJECT;
                 }
 
@@ -73,70 +64,72 @@ function highlightAll(container: HTMLElement, query: string) {
         }
     );
 
-    const textNodes: Text[] = [];
-    let currentNode: Node | null = walker.nextNode();
-
+    let currentNode = walker.nextNode();
     while (currentNode) {
         textNodes.push(currentNode as Text);
         currentNode = walker.nextNode();
     }
 
-    let firstMark: HTMLElement | null = null;
-
-    for (const textNode of textNodes) {
-        const text = textNode.nodeValue;
-        if (!text) continue;
-
-        const regex = new RegExp(escapeRegExp(query), "gi");
-        const matches = [...text.matchAll(regex)];
-
-        if (matches.length === 0) continue;
-
-        const currentTextNode: Text = textNode;
-
-        for (let i = matches.length - 1; i >= 0; i--) {
-            const match = matches[i];
-            if (match.index == null) continue;
-
-            const start = match.index;
-            const end = start + match[0].length;
-
-            const range = document.createRange();
-            range.setStart(currentTextNode, start);
-            range.setEnd(currentTextNode, end);
-
-            const mark = document.createElement("mark");
-            mark.setAttribute("data-search-highlight", "true");
-            mark.className = "rounded bg-gold/25 px-1 text-gold";
-
-            range.surroundContents(mark);
-
-            if (!firstMark) {
-                firstMark = mark;
-            }
-        }
-    }
-
-    if (firstMark) {
-        firstMark.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-        });
-    }
+    return textNodes;
 }
 
-export default function SearchHighlight({
-    query,
-    containerId = "article-content",
-}: SearchHighlightProps) {
+export default function SearchHighlight({ query, containerId }: Props) {
     useEffect(() => {
-        if (!query.trim()) return;
-
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        clearHighlights(container);
-        highlightAll(container, query);
+        unwrapPreviousHighlights(container);
+
+        const normalizedQuery = query.trim();
+        if (!normalizedQuery) return;
+
+        const regex = new RegExp(escapeRegExp(normalizedQuery), "gi");
+        const querySlug = slugify(normalizedQuery);
+
+        let occurrenceIndex = 0;
+        const textNodes = getTextNodes(container);
+
+        for (const textNode of textNodes) {
+            const text = textNode.textContent || "";
+            regex.lastIndex = 0;
+
+            const matches = Array.from(text.matchAll(regex));
+            if (matches.length === 0) continue;
+
+            const fragment = document.createDocumentFragment();
+            let lastIndex = 0;
+
+            for (const match of matches) {
+                const matchText = match[0];
+                const start = match.index ?? 0;
+                const end = start + matchText.length;
+
+                if (start > lastIndex) {
+                    fragment.appendChild(
+                        document.createTextNode(text.slice(lastIndex, start))
+                    );
+                }
+
+                occurrenceIndex += 1;
+
+                const mark = document.createElement("mark");
+                mark.textContent = matchText;
+                mark.id = `search-${querySlug}-${occurrenceIndex}`;
+                mark.setAttribute("data-search-highlight", "true");
+                mark.className = "rounded bg-gold/25 px-1 text-gold";
+
+                fragment.appendChild(mark);
+                lastIndex = end;
+            }
+
+            if (lastIndex < text.length) {
+                fragment.appendChild(
+                    document.createTextNode(text.slice(lastIndex))
+                );
+            }
+
+            textNode.parentNode?.replaceChild(fragment, textNode);
+        }
     }, [query, containerId]);
 
     return null;

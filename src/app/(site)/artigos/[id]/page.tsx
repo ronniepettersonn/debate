@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
 import type { Metadata } from "next";
 import SearchHighlight from "@/components/search-highlight";
+import ScrollToSearchOccurrence from "@/components/scroll-to-search-occurrence";
+
 export const dynamic = "force-dynamic";
 
 type TgResponse = {
@@ -114,7 +116,6 @@ export default async function TopicPage({ params, searchParams }: Props) {
     const savedContent = parseManualContent(topic.content);
     let tg: TgResponse["result"] | null = null;
 
-    // Busca no Telegraph só como fallback, caso o banco esteja vazio
     if (!savedContent && topic.telegraphPath) {
         try {
             tg = await getTelegraphPage(topic.telegraphPath);
@@ -129,6 +130,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
     return (
         <>
             <SearchHighlight query={q} containerId="article-content" />
+            <ScrollToSearchOccurrence containerId="article-content" />
 
             <main className="min-h-screen bg-bg text-text">
                 <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-10">
@@ -142,7 +144,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
                         {contentToRender ? (
                             <article
                                 id="article-content"
-                                className="mx-auto w-full max-w-3xl"
+                                className="mx-auto w-full max-w-3xl scroll-mt-24"
                             >
                                 <TelegraphRenderer content={contentToRender} />
                             </article>
