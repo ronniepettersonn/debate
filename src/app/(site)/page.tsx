@@ -30,6 +30,7 @@ function sortByDisplayOrder<T extends { display: { displayOrder: number } | null
 
 function getFallbackTitle(topic: TopicWithDisplay) {
   if (topic.title?.trim()) {
+    console.log(topic.title)
     return topic.title;
   }
 
@@ -83,6 +84,8 @@ export default async function Home() {
   const glossario = sortByDisplayOrder(
     topics.filter((t) => t.category === "GLOSSARIO")
   );
+
+  console.log(glossario, 'AQUI')
 
   return (
     <main className="min-h-screen bg-bg bg-grid text-text">
