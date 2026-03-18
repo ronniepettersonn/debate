@@ -2,6 +2,7 @@
 
 import LogoutButton from "@/components/logout-button";
 import { useEffect, useMemo, useState } from "react";
+export const dynamic = "force-dynamic";
 
 type Topic = {
     id: string;
@@ -518,8 +519,8 @@ export default function AdminTopicsPage() {
                                                         disabled={!hasOrder || isMovingThis}
                                                         aria-disabled={!hasOrder || isMovingThis}
                                                         className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${!hasOrder || isMovingThis
-                                                                ? "cursor-not-allowed border-white/5 text-white/25 opacity-50"
-                                                                : "border-white/10 text-white hover:bg-white/5"
+                                                            ? "cursor-not-allowed border-white/5 text-white/25 opacity-50"
+                                                            : "border-white/10 text-white hover:bg-white/5"
                                                             }`}
                                                         type="button"
                                                         title={
@@ -536,8 +537,8 @@ export default function AdminTopicsPage() {
                                                         disabled={!hasOrder || isMovingThis}
                                                         aria-disabled={!hasOrder || isMovingThis}
                                                         className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${!hasOrder || isMovingThis
-                                                                ? "cursor-not-allowed border-white/5 text-white/25 opacity-50"
-                                                                : "border-white/10 text-white hover:bg-white/5"
+                                                            ? "cursor-not-allowed border-white/5 text-white/25 opacity-50"
+                                                            : "border-white/10 text-white hover:bg-white/5"
                                                             }`}
                                                         type="button"
                                                         title={
