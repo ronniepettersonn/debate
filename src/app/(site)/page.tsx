@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import HomeSearch from "@/components/home-search";
+export const dynamic = "force-dynamic";
 
 type TopicWithDisplay = {
   id: string;

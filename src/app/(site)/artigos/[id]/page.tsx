@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
 import type { Metadata } from "next";
 import SearchHighlight from "@/components/search-highlight";
+export const dynamic = "force-dynamic";
 
 type TgResponse = {
     ok: boolean;
