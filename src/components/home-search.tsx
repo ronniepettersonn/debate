@@ -85,18 +85,30 @@ export default function HomeSearch() {
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
 
-    function escapeRegExp(value: string) {
-        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    /*  function escapeRegExp(value: string) {
+         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+     }
+  */
+    function normalizeForComparison(value: string) {
+        return value
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
     }
+
 
     function highlightText(text: string, query: string) {
         if (!query.trim()) return text;
 
-        const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
-        const parts = text.split(regex);
+        const normalizedQuery = normalizeForComparison(query.trim());
+
+        const regex = /[\p{L}\p{N}]+|[^\p{L}\p{N}]+/gu;
+        const parts = text.match(regex) ?? [text];
 
         return parts.map((part, index) => {
-            if (part.toLowerCase() === query.toLowerCase()) {
+            const isWord = /[\p{L}\p{N}]+/u.test(part);
+
+            if (isWord && normalizeForComparison(part) === normalizedQuery) {
                 return (
                     <mark
                         key={`${part}-${index}`}

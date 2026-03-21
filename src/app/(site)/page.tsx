@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import HomeSearch from "@/components/home-search";
+import Cta from "@/components/cta";
 export const dynamic = "force-dynamic";
 
 type TopicWithDisplay = {
@@ -295,6 +296,17 @@ export default async function Home() {
             )}
           </div>
         </section>
+
+        <section
+          id="glossario"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8 flex gap-6 items-center justify-between"
+        >
+          <h2 className="text-2xl font-semibold text-gold max-w-[50%] md:max-w-[75%]">Conheça outros livros de Natan Rufino</h2>
+
+          <Cta />
+        </section>
+
+
 
         <footer className="mt-8 flex flex-col md:flex-row justify-center gap-1 border-t border-border px-4 pb-4 pt-6 text-xs text-muted/70">
           <div>

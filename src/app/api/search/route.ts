@@ -5,8 +5,16 @@ function normalizeSearchTerm(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function normalizeText(value: string | null) {
+  if (!value) return "";
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizeForComparison(value: string | null) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function slugify(value: string) {
@@ -36,17 +44,57 @@ function buildExcerptFromIndex(
 
 function buildFallbackExcerpt(text: string | null, radius = 140) {
   if (!text) return "";
-  const normalizedText = text.replace(/\s+/g, " ").trim();
+  const normalizedText = normalizeText(text);
   return normalizedText.slice(0, radius * 2).trim();
 }
 
-function findOccurrences(text: string | null, query: string, radius = 140) {
+function isSingleWordQuery(query: string) {
+  return !query.includes(" ");
+}
+
+function extractWordTokens(text: string) {
+  const tokens: Array<{
+    raw: string;
+    normalized: string;
+    start: number;
+    end: number;
+  }> = [];
+
+  const regex = /[\p{L}\p{N}]+/gu;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const raw = match[0];
+    const start = match.index;
+    const end = start + raw.length;
+
+    tokens.push({
+      raw,
+      normalized: normalizeForComparison(raw),
+      start,
+      end,
+    });
+
+    if (match.index === regex.lastIndex) {
+      regex.lastIndex += 1;
+    }
+  }
+
+  return tokens;
+}
+
+function splitQueryIntoTokens(query: string) {
+  return extractWordTokens(query).map((token) => token.normalized);
+}
+
+function findSingleWordOccurrences(text: string | null, query: string, radius = 140) {
   if (!text) return [];
 
-  const normalizedText = text.replace(/\s+/g, " ").trim();
+  const normalizedText = normalizeText(text);
   if (!normalizedText) return [];
 
-  const regex = new RegExp(escapeRegExp(query), "gi");
+  const normalizedQuery = normalizeForComparison(query);
+  const tokens = extractWordTokens(normalizedText);
 
   const occurrences: Array<{
     occurrenceIndex: number;
@@ -57,31 +105,97 @@ function findOccurrences(text: string | null, query: string, radius = 140) {
     matchText: string;
   }> = [];
 
-  let match: RegExpExecArray | null;
   let occurrenceIndex = 0;
 
-  while ((match = regex.exec(normalizedText)) !== null) {
-    occurrenceIndex += 1;
+  for (const token of tokens) {
+    if (token.normalized !== normalizedQuery) continue;
 
-    const start = match.index;
-    const matchText = match[0];
-    const end = start + matchText.length;
+    occurrenceIndex += 1;
 
     occurrences.push({
       occurrenceIndex,
-      excerpt: buildExcerptFromIndex(normalizedText, start, matchText.length, radius),
+      excerpt: buildExcerptFromIndex(
+        normalizedText,
+        token.start,
+        token.raw.length,
+        radius
+      ),
+      fragmentId: `search-${slugify(query)}-${occurrenceIndex}`,
+      start: token.start,
+      end: token.end,
+      matchText: token.raw,
+    });
+  }
+
+  return occurrences;
+}
+
+function findPhraseOccurrences(text: string | null, query: string, radius = 140) {
+  if (!text) return [];
+
+  const normalizedText = normalizeText(text);
+  if (!normalizedText) return [];
+
+  const textTokens = extractWordTokens(normalizedText);
+  const queryTokens = splitQueryIntoTokens(query);
+
+  if (!queryTokens.length) return [];
+
+  const occurrences: Array<{
+    occurrenceIndex: number;
+    excerpt: string;
+    fragmentId: string;
+    start: number;
+    end: number;
+    matchText: string;
+  }> = [];
+
+  let occurrenceIndex = 0;
+
+  for (let i = 0; i <= textTokens.length - queryTokens.length; i += 1) {
+    let matched = true;
+
+    for (let j = 0; j < queryTokens.length; j += 1) {
+      if (textTokens[i + j].normalized !== queryTokens[j]) {
+        matched = false;
+        break;
+      }
+    }
+
+    if (!matched) continue;
+
+    const start = textTokens[i].start;
+    const end = textTokens[i + queryTokens.length - 1].end;
+    const matchText = normalizedText.slice(start, end);
+
+    occurrenceIndex += 1;
+
+    occurrences.push({
+      occurrenceIndex,
+      excerpt: buildExcerptFromIndex(normalizedText, start, end - start, radius),
       fragmentId: `search-${slugify(query)}-${occurrenceIndex}`,
       start,
       end,
       matchText,
     });
-
-    if (match.index === regex.lastIndex) {
-      regex.lastIndex += 1;
-    }
   }
 
   return occurrences;
+}
+
+function findOccurrences(text: string | null, query: string, radius = 140) {
+  const normalizedQuery = normalizeSearchTerm(query);
+  if (!normalizedQuery) return [];
+
+  if (isSingleWordQuery(normalizedQuery)) {
+    return findSingleWordOccurrences(text, normalizedQuery, radius);
+  }
+
+  return findPhraseOccurrences(text, normalizedQuery, radius);
+}
+
+function hasExactMatch(text: string | null, query: string) {
+  return findOccurrences(text, query, 0).length > 0;
 }
 
 export async function GET(req: Request) {
@@ -98,65 +212,58 @@ export async function GET(req: Request) {
       });
     }
 
+    // Busca tudo e filtra com regra exata em memória.
+    // Para o seu cenário isso garante comportamento correto.
     const topics = await prisma.topic.findMany({
-      where: {
-        OR: [
-          {
-            title: {
-              contains: query,
-              mode: "insensitive",
-            },
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        telegraphPath: true,
+        youtubeUrl: true,
+        updatedAt: true,
+        plainTextContent: true,
+        display: {
+          select: {
+            displayOrder: true,
           },
-          {
-            category: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            plainTextContent: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-        ],
-      },
-      include: {
-        display: true,
+        },
       },
       orderBy: [{ category: "asc" }, { updatedAt: "desc" }],
     });
 
-    const lowerQuery = query.toLowerCase();
+    const results = topics
+      .map((topic) => {
+        const titleMatches = hasExactMatch(topic.title, query);
+        const categoryMatches = hasExactMatch(topic.category, query);
+        const occurrences = findOccurrences(topic.plainTextContent, query);
+        const contentMatches = occurrences.length > 0;
 
-    const results = topics.map((topic) => {
-      const occurrences = findOccurrences(topic.plainTextContent, query);
+        const fallbackExcerpt = buildFallbackExcerpt(topic.plainTextContent);
+        const excerpt = occurrences[0]?.excerpt ?? fallbackExcerpt;
 
-      const fallbackExcerpt = buildFallbackExcerpt(topic.plainTextContent);
-      const excerpt = occurrences[0]?.excerpt ?? fallbackExcerpt;
-
-      const titleMatches = topic.title?.toLowerCase().includes(lowerQuery) ?? false;
-      const categoryMatches = topic.category.toLowerCase().includes(lowerQuery);
-
-      return {
-        id: topic.id,
-        title: topic.title,
-        category: topic.category,
-        telegraphPath: topic.telegraphPath,
-        youtubeUrl: topic.youtubeUrl,
-        updatedAt: topic.updatedAt,
-        displayOrder: topic.display?.displayOrder ?? null,
-
-        // mantém compatibilidade com a API antiga
-        excerpt,
-
-        // dados novos
-        occurrences,
-        occurrencesCount: occurrences.length,
-        titleMatches,
-        categoryMatches,
-      };
-    });
+        return {
+          id: topic.id,
+          title: topic.title,
+          category: topic.category,
+          telegraphPath: topic.telegraphPath,
+          youtubeUrl: topic.youtubeUrl,
+          updatedAt: topic.updatedAt,
+          displayOrder: topic.display?.displayOrder ?? null,
+          excerpt,
+          occurrences,
+          occurrencesCount: occurrences.length,
+          titleMatches,
+          categoryMatches,
+          contentMatches,
+        };
+      })
+      .filter(
+        (topic) =>
+          topic.titleMatches ||
+          topic.categoryMatches ||
+          topic.contentMatches
+      );
 
     return NextResponse.json({
       query,
