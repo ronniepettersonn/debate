@@ -7,8 +7,19 @@ type Props = {
     containerId: string;
 };
 
-function escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function normalizeSearchTerm(value: string) {
+    return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizeText(value: string) {
+    return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizeForComparison(value: string) {
+    return normalizeText(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
 }
 
 function slugify(value: string) {
@@ -18,6 +29,10 @@ function slugify(value: string) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
+}
+
+function isSingleWordQuery(query: string) {
+    return !query.includes(" ");
 }
 
 function unwrapPreviousHighlights(container: HTMLElement) {
@@ -35,34 +50,30 @@ function unwrapPreviousHighlights(container: HTMLElement) {
 function getTextNodes(root: Node): Text[] {
     const textNodes: Text[] = [];
 
-    const walker = document.createTreeWalker(
-        root,
-        NodeFilter.SHOW_TEXT,
-        {
-            acceptNode(node) {
-                const parent = node.parentElement;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            const parent = node.parentElement;
 
-                if (!parent) return NodeFilter.FILTER_REJECT;
+            if (!parent) return NodeFilter.FILTER_REJECT;
 
-                const tag = parent.tagName.toLowerCase();
+            const tag = parent.tagName.toLowerCase();
 
-                if (
-                    tag === "script" ||
-                    tag === "style" ||
-                    tag === "noscript" ||
-                    tag === "mark"
-                ) {
-                    return NodeFilter.FILTER_REJECT;
-                }
+            if (
+                tag === "script" ||
+                tag === "style" ||
+                tag === "noscript" ||
+                tag === "mark"
+            ) {
+                return NodeFilter.FILTER_REJECT;
+            }
 
-                if (!node.textContent?.trim()) {
-                    return NodeFilter.FILTER_REJECT;
-                }
+            if (!node.textContent?.trim()) {
+                return NodeFilter.FILTER_REJECT;
+            }
 
-                return NodeFilter.FILTER_ACCEPT;
-            },
-        }
-    );
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
 
     let currentNode = walker.nextNode();
     while (currentNode) {
@@ -73,6 +84,98 @@ function getTextNodes(root: Node): Text[] {
     return textNodes;
 }
 
+function extractWordTokens(text: string) {
+    const tokens: Array<{
+        raw: string;
+        normalized: string;
+        start: number;
+        end: number;
+    }> = [];
+
+    const regex = /[\p{L}\p{N}]+/gu;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+        const raw = match[0];
+        const start = match.index;
+        const end = start + raw.length;
+
+        tokens.push({
+            raw,
+            normalized: normalizeForComparison(raw),
+            start,
+            end,
+        });
+
+        if (match.index === regex.lastIndex) {
+            regex.lastIndex += 1;
+        }
+    }
+
+    return tokens;
+}
+
+function splitQueryIntoTokens(query: string) {
+    return extractWordTokens(query).map((token) => token.normalized);
+}
+
+function findExactMatchesInText(text: string, query: string) {
+    const normalizedQuery = normalizeSearchTerm(query);
+    if (!normalizedQuery) return [];
+
+    const matches: Array<{
+        start: number;
+        end: number;
+        matchText: string;
+    }> = [];
+
+    if (isSingleWordQuery(normalizedQuery)) {
+        const normalizedSingleQuery = normalizeForComparison(normalizedQuery);
+        const tokens = extractWordTokens(text);
+
+        for (const token of tokens) {
+            if (token.normalized !== normalizedSingleQuery) continue;
+
+            matches.push({
+                start: token.start,
+                end: token.end,
+                matchText: token.raw,
+            });
+        }
+
+        return matches;
+    }
+
+    const textTokens = extractWordTokens(text);
+    const queryTokens = splitQueryIntoTokens(normalizedQuery);
+
+    if (!queryTokens.length) return [];
+
+    for (let i = 0; i <= textTokens.length - queryTokens.length; i += 1) {
+        let matched = true;
+
+        for (let j = 0; j < queryTokens.length; j += 1) {
+            if (textTokens[i + j].normalized !== queryTokens[j]) {
+                matched = false;
+                break;
+            }
+        }
+
+        if (!matched) continue;
+
+        const start = textTokens[i].start;
+        const end = textTokens[i + queryTokens.length - 1].end;
+
+        matches.push({
+            start,
+            end,
+            matchText: text.slice(start, end),
+        });
+    }
+
+    return matches;
+}
+
 export default function SearchHighlight({ query, containerId }: Props) {
     useEffect(() => {
         const container = document.getElementById(containerId);
@@ -80,10 +183,9 @@ export default function SearchHighlight({ query, containerId }: Props) {
 
         unwrapPreviousHighlights(container);
 
-        const normalizedQuery = query.trim();
+        const normalizedQuery = normalizeSearchTerm(query);
         if (!normalizedQuery) return;
 
-        const regex = new RegExp(escapeRegExp(normalizedQuery), "gi");
         const querySlug = slugify(normalizedQuery);
 
         let occurrenceIndex = 0;
@@ -91,18 +193,15 @@ export default function SearchHighlight({ query, containerId }: Props) {
 
         for (const textNode of textNodes) {
             const text = textNode.textContent || "";
-            regex.lastIndex = 0;
+            const matches = findExactMatchesInText(text, normalizedQuery);
 
-            const matches = Array.from(text.matchAll(regex));
             if (matches.length === 0) continue;
 
             const fragment = document.createDocumentFragment();
             let lastIndex = 0;
 
             for (const match of matches) {
-                const matchText = match[0];
-                const start = match.index ?? 0;
-                const end = start + matchText.length;
+                const { start, end, matchText } = match;
 
                 if (start > lastIndex) {
                     fragment.appendChild(
