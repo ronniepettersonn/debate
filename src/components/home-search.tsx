@@ -85,17 +85,12 @@ export default function HomeSearch() {
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
 
-    /*  function escapeRegExp(value: string) {
-         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-     }
-  */
     function normalizeForComparison(value: string) {
         return value
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
             .toLowerCase();
     }
-
 
     function highlightText(text: string, query: string) {
         if (!query.trim()) return text;
@@ -223,7 +218,7 @@ export default function HomeSearch() {
                                         ? "Vídeo sem título"
                                         : "Título indisponível");
 
-                                const occurrences =
+                                const normalizedOccurrences =
                                     result.occurrences && result.occurrences.length > 0
                                         ? result.occurrences
                                         : result.excerpt
@@ -238,6 +233,18 @@ export default function HomeSearch() {
                                                 },
                                             ]
                                             : [];
+
+                                const primaryOccurrence = normalizedOccurrences[0];
+                                const otherOccurrences = normalizedOccurrences.slice(1);
+
+                                const mainHref = getTopicHref(
+                                    result,
+                                    debouncedQuery,
+                                    primaryOccurrence?.fragmentId || undefined
+                                );
+
+                                const mainExcerpt =
+                                    primaryOccurrence?.excerpt || result.excerpt || "";
 
                                 if (result.category === "VIDEOS") {
                                     return (
@@ -277,33 +284,27 @@ export default function HomeSearch() {
                                                 {normalizeCategoryLabel(result.category)}
                                             </div>
 
-                                            <Link
-                                                href={getTopicHref(result, debouncedQuery)}
-                                                className="block"
-                                            >
+                                            <Link href={mainHref} className="block">
                                                 <h3 className="text-base font-medium text-text">
                                                     {highlightText(title, debouncedQuery)}
                                                 </h3>
                                             </Link>
 
-                                            {result.excerpt ? (
-                                                <Link
-                                                    href={getTopicHref(result, debouncedQuery)}
-                                                    className="block"
-                                                >
+                                            {mainExcerpt ? (
+                                                <Link href={mainHref} className="block">
                                                     <p className="text-sm leading-6 text-muted">
-                                                        {highlightText(result.excerpt, debouncedQuery)}
+                                                        {highlightText(mainExcerpt, debouncedQuery)}
                                                     </p>
                                                 </Link>
                                             ) : null}
 
-                                            {occurrences.length > 1 && (
+                                            {otherOccurrences.length > 0 && (
                                                 <div className="mt-2 flex flex-col gap-2 border-t border-border/60 pt-3">
                                                     <div className="text-xs uppercase tracking-[0.14em] text-muted/70">
-                                                        Ocorrências no artigo
+                                                        Outras ocorrências no artigo
                                                     </div>
 
-                                                    {occurrences.map((occurrence) => (
+                                                    {otherOccurrences.map((occurrence) => (
                                                         <Link
                                                             key={`${result.id}-${occurrence.fragmentId || occurrence.occurrenceIndex}`}
                                                             href={getTopicHref(
