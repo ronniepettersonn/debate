@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent } from "@/lib/ga";
 
 type SearchOccurrence = {
     occurrenceIndex: number;
@@ -85,6 +86,8 @@ export default function HomeSearch() {
     const [loading, setLoading] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
 
+    const lastTrackedSearchRef = useRef("");
+
     function normalizeForComparison(value: string) {
         return value
             .normalize("NFD")
@@ -153,6 +156,15 @@ export default function HomeSearch() {
 
                 const data: SearchResponse = await res.json();
                 setResults(data.results);
+
+                if (lastTrackedSearchRef.current !== debouncedQuery) {
+                    trackEvent("search", {
+                        search_term: debouncedQuery,
+                        results_count: data.results.length,
+                    });
+
+                    lastTrackedSearchRef.current = debouncedQuery;
+                }
             } catch (error) {
                 console.error(error);
                 setResults([]);
@@ -254,6 +266,15 @@ export default function HomeSearch() {
                                             target="_blank"
                                             rel="noreferrer"
                                             className="rounded-2xl border border-border bg-panel/45 p-4 transition hover:bg-panel/65"
+                                            onClick={() =>
+                                                trackEvent("video_result_click", {
+                                                    search_term: debouncedQuery,
+                                                    result_id: result.id,
+                                                    result_title: title,
+                                                    result_category: result.category,
+                                                    video_url: result.youtubeUrl ?? "",
+                                                })
+                                            }
                                         >
                                             <div className="flex flex-col gap-2">
                                                 <div className="text-xs uppercase tracking-[0.14em] text-muted/80">
@@ -274,6 +295,18 @@ export default function HomeSearch() {
                                     );
                                 }
 
+                                const handleMainResultClick = () => {
+                                    trackEvent("search_result_click", {
+                                        search_term: debouncedQuery,
+                                        result_id: result.id,
+                                        result_title: title,
+                                        result_category: result.category,
+                                        occurrence_index:
+                                            primaryOccurrence?.occurrenceIndex ?? 1,
+                                        destination: mainHref,
+                                    });
+                                };
+
                                 return (
                                     <div
                                         key={result.id}
@@ -284,14 +317,22 @@ export default function HomeSearch() {
                                                 {normalizeCategoryLabel(result.category)}
                                             </div>
 
-                                            <Link href={mainHref} className="block">
+                                            <Link
+                                                href={mainHref}
+                                                className="block"
+                                                onClick={handleMainResultClick}
+                                            >
                                                 <h3 className="text-base font-medium text-text">
                                                     {highlightText(title, debouncedQuery)}
                                                 </h3>
                                             </Link>
 
                                             {mainExcerpt ? (
-                                                <Link href={mainHref} className="block">
+                                                <Link
+                                                    href={mainHref}
+                                                    className="block"
+                                                    onClick={handleMainResultClick}
+                                                >
                                                     <p className="text-sm leading-6 text-muted">
                                                         {highlightText(mainExcerpt, debouncedQuery)}
                                                     </p>
@@ -304,22 +345,43 @@ export default function HomeSearch() {
                                                         Outras ocorrências no artigo
                                                     </div>
 
-                                                    {otherOccurrences.map((occurrence) => (
-                                                        <Link
-                                                            key={`${result.id}-${occurrence.fragmentId || occurrence.occurrenceIndex}`}
-                                                            href={getTopicHref(
-                                                                result,
-                                                                debouncedQuery,
-                                                                occurrence.fragmentId || undefined
-                                                            )}
-                                                            className="rounded-xl border border-border/60 bg-panel/30 p-3 text-sm leading-6 text-muted transition hover:bg-panel/50"
-                                                        >
-                                                            {highlightText(
-                                                                occurrence.excerpt,
-                                                                debouncedQuery
-                                                            )}
-                                                        </Link>
-                                                    ))}
+                                                    {otherOccurrences.map((occurrence) => {
+                                                        const occurrenceHref = getTopicHref(
+                                                            result,
+                                                            debouncedQuery,
+                                                            occurrence.fragmentId || undefined
+                                                        );
+
+                                                        return (
+                                                            <Link
+                                                                key={`${result.id}-${occurrence.fragmentId || occurrence.occurrenceIndex}`}
+                                                                href={occurrenceHref}
+                                                                className="rounded-xl border border-border/60 bg-panel/30 p-3 text-sm leading-6 text-muted transition hover:bg-panel/50"
+                                                                onClick={() =>
+                                                                    trackEvent(
+                                                                        "search_result_click",
+                                                                        {
+                                                                            search_term:
+                                                                                debouncedQuery,
+                                                                            result_id: result.id,
+                                                                            result_title: title,
+                                                                            result_category:
+                                                                                result.category,
+                                                                            occurrence_index:
+                                                                                occurrence.occurrenceIndex,
+                                                                            destination:
+                                                                                occurrenceHref,
+                                                                        }
+                                                                    )
+                                                                }
+                                                            >
+                                                                {highlightText(
+                                                                    occurrence.excerpt,
+                                                                    debouncedQuery
+                                                                )}
+                                                            </Link>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>
