@@ -46,15 +46,17 @@ function subscribeToHashChange(callback: () => void) {
     if (typeof window === "undefined") return () => { };
 
     window.addEventListener("hashchange", callback);
-    return () => window.removeEventListener("hashchange", callback);
+    window.addEventListener("popstate", callback);
+
+    return () => {
+        window.removeEventListener("hashchange", callback);
+        window.removeEventListener("popstate", callback);
+    };
 }
 
 function getActiveHref(pathname: string, currentHash: string) {
     if (pathname === "/") {
-        if (currentHash) {
-            return `/${currentHash}`;
-        }
-
+        if (currentHash) return `/${currentHash}`;
         return "/#topo";
     }
 
@@ -117,24 +119,27 @@ export default function SiteSidebar({
             const handleClick = (
                 e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>
             ) => {
-                if (item.href === "/#topo" && pathname === "/") {
+                const isHomeAnchor = item.href.startsWith("/#");
+
+                if (isHomeAnchor && pathname === "/") {
                     e.preventDefault();
 
-                    const section = document.getElementById("topo");
+                    const hash = item.href.replace("/#", "");
+                    const section = document.getElementById(hash);
 
                     if (section) {
                         section.scrollIntoView({
                             behavior: "smooth",
                             block: "start",
                         });
-                    } else {
+                    } else if (hash === "topo") {
                         window.scrollTo({
                             top: 0,
                             behavior: "smooth",
                         });
                     }
 
-                    window.history.replaceState(null, "", "/#topo");
+                    window.history.replaceState(null, "", `/#${hash}`);
                     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
                     if (isMobileMenu) onClose();
