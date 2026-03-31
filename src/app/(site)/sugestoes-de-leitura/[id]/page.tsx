@@ -5,6 +5,7 @@ import TelegraphRenderer, { type TgNode } from "@/components/TelegraphRenderer";
 import type { Metadata } from "next";
 import SearchHighlight from "@/components/search-highlight";
 import ScrollToSearchOccurrence from "@/components/scroll-to-search-occurrence";
+import TrackTopicView from "@/components/track-topics-view";
 
 export const dynamic = "force-dynamic";
 
@@ -131,7 +132,11 @@ export default async function TopicPage({ params, searchParams }: Props) {
         <>
             <SearchHighlight query={q} containerId="article-content" />
             <ScrollToSearchOccurrence containerId="article-content" />
-
+            <TrackTopicView
+                id={topic.id}
+                title={topic.title ?? "Sem título"}
+                category={topic.category}
+            />
             <main className="min-h-screen bg-bg text-text">
                 <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-10">
                     <header className="mb-8 md:mb-10">
