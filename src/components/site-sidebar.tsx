@@ -74,6 +74,10 @@ function getActiveHref(pathname: string, currentHash: string) {
         return "/#patristica";
     }
 
+    if (pathname.startsWith("/batismo-infantil/")) {
+        return "/#batismo-infantil";
+    }
+
     if (pathname.startsWith("/videos/")) {
         return "/#videos";
     }
