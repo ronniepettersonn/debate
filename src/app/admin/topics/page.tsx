@@ -40,6 +40,7 @@ const CATEGORY_OPTIONS = [
     { label: "Interpretações Gnósticas", value: "INTERPRETACOES_GNOSTICAS" },
     { label: "Artigos", value: "ARTIGO" },
     { label: "Patrística", value: "PATRISTICA" },
+    { label: "Batismo Infantil", value: "BATISMO_INFANTIL" },
     { label: "Vídeos", value: "VIDEOS" },
     { label: "Sugestões de Leitura", value: "SUGESTOES_DE_LEITURA" },
 ];

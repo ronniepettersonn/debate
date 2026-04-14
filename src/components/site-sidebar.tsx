@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useMemo, useSyncExternalStore } from "react";
 import clsx from "clsx";
 import {
+    FaBaby,
     FaBook,
     FaChurch,
     FaHeadSideVirus,
@@ -23,6 +24,7 @@ const MENU_ITEMS = [
         icon: <FaHeadSideVirus />,
     },
     { href: "/#patristica", label: "Patrística", icon: <FaChurch /> },
+    { href: "/#batismo_infantil", label: "Batismo Infantil", icon: <FaBaby /> },
     { href: "/#videos", label: "Vídeos", icon: <FaVideo /> },
     {
         href: "/#sugestoes-de-leitura",

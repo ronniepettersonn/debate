@@ -79,6 +79,10 @@ export default async function Home() {
     topics.filter((t) => t.category === "PATRISTICA")
   );
 
+  const batismo = sortByDisplayOrder(
+    topics.filter((t) => t.category === "BATISMO_INFANTIL")
+  );
+
   const sugestoesDeLeitura = sortByDisplayOrder(
     topics.filter((t) => t.category === "SUGESTOES_DE_LEITURA")
   );
@@ -187,6 +191,33 @@ export default async function Home() {
             {patristica.length > 0 ? (
               patristica.map((t) => (
                 <Link key={t.id} href={`/patristica/${t.id}`} className="rounded-2xl">
+                  <ul className="flex list-disc items-start justify-between gap-4 pl-6">
+                    <li className="min-w-0">
+                      <h3 className="mt-1 text-base font-medium text-text">
+                        {getFallbackTitle(t)}
+                      </h3>
+                    </li>
+                  </ul>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-border bg-panel/45 p-5 text-sm text-muted md:col-span-2">
+                Nenhum tópico cadastrado nessa sessão ainda.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
+          id="batismo_infantil"
+          className="scroll-mt-24 mt-6 rounded-3xl border border-border bg-panel/35 p-5 backdrop-blur md:p-8"
+        >
+          <h2 className="text-2xl font-semibold text-gold">Batismo Infantil</h2>
+
+          <div className="mt-6 grid gap-3">
+            {batismo.length > 0 ? (
+              batismo.map((t) => (
+                <Link key={t.id} href={`/batismo-infantil/${t.id}`} className="rounded-2xl">
                   <ul className="flex list-disc items-start justify-between gap-4 pl-6">
                     <li className="min-w-0">
                       <h3 className="mt-1 text-base font-medium text-text">
