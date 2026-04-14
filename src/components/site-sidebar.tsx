@@ -75,7 +75,7 @@ function getActiveHref(pathname: string, currentHash: string) {
     }
 
     if (pathname.startsWith("/batismo-infantil/")) {
-        return "/#batismo-infantil";
+        return "/#batismo_infantil";
     }
 
     if (pathname.startsWith("/videos/")) {
