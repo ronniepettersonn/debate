@@ -185,7 +185,7 @@ export default function SiteSidebar({
 
                     <div className="my-4 flex w-full items-center justify-center px-4">
                         <Link
-                            href="https://loja.natanrufino.com/checkouts/cn/hWN9wR27UWTLZohz6VSh1Pyk/pt-br?_r=AQABhEUVbyI5pl1Yn9FZhzFvMQnLDuWNpP_9NuAfS5QSK9I&cart_link_id=czcXu2H5"
+                            href="https://loja.natanrufino.com/cart/46403916300502:1"
                             className="w-full rounded-2xl bg-gold py-2 text-center font-semibold text-panel transition hover:cursor-pointer hover:bg-gold/70"
                             target="_blank"
                             rel="noopener noreferrer"
